@@ -1,12 +1,19 @@
 "Free electron density model"
+import os
+
 import numpy as np
+from astropy.table import Table
 from numpy import cos
 from numpy import cosh
 from numpy import exp
 from numpy import pi
 from numpy import sin
 from numpy import sqrt
+from numpy import tan
 
+
+# import astropy.units as us
+# from astropy.coordinates import SkyCoord
 
 # Configuration
 # TODO: use to config file
@@ -66,7 +73,35 @@ from numpy import sqrt
 #                       'farm4': 1.5,
 #                       'farm5': 0.3}
 
-def ne_thick_disk(xyz, ne_disk, hdisk, rdisk, r_sun):
+
+ldr_params = {'abc': np.array([1.50, .750, .50]),
+              'center': np.array([1.36, 8.06, 0.0]),
+              'theta': -24.2*pi/180,
+              'ne': 0.012,
+              'F': 0.1}
+
+lsb_params = {'abc': np.array([1.050, .4250, .3250]),
+              'center': np.array([-0.75, 9.0, -0.05]),
+              'theta': 139.*pi/180,
+              'ne': 0.016,
+              'F':  0.01}
+
+lhb_params = {'abc': np.array([.0850, .1000, .330]),
+              'center': np.array([0.01, 8.45, 0.17]),
+              'theta': 15*pi/180,
+              'ne': 0.005,
+              'F': 0.01}
+
+loop_params = {'center': np.array([-0.045, 8.40, 0.07]),
+               'r': 0.120,
+               'dr': 0.060,
+               'ne1': 0.0125,
+               'ne2': 0.0125,
+               'F1': 0.2,
+               'F2': 0.01}
+
+
+def ne_thick_disk(xyz, ne_disk, rdisk, hdisk, r_sun):
     """
     Calculate the contribution of the thick disk to the free electron density
      at x, y, z = `xyz`
@@ -78,7 +113,7 @@ def ne_thick_disk(xyz, ne_disk, hdisk, rdisk, r_sun):
                       (r2d < rdisk))
 
 
-def ne_thin_disk(xyz, ne_disk, hdisk, rdisk):
+def ne_thin_disk(xyz, ne_disk, rdisk, hdisk):
     """
     Calculate the contribution of the thin disk to the free electron density
      at x, y, z = `xyz`
@@ -95,7 +130,11 @@ def ne_gc(xyz, ne_gc0, rgc, hgc, xyz_gc):
     """
     # Here I'm using the expression in the NE2001 code which is inconsistent
     # with Cordes and Lazio 2011 (0207156v3) (See Table 2)
-    xyz = (xyz_gc - xyz)
+    try:
+        xyz = xyz - xyz_gc
+    except ValueError:
+        xyz = xyz - xyz_gc[:, None]
+
     r2d = sqrt(xyz[0]**2 + xyz[1]**2)
 
     # ????
@@ -107,15 +146,207 @@ def ne_gc(xyz, ne_gc0, rgc, hgc, xyz_gc):
     return ne_gc0*((r2d/rgc)**2 + (xyz[-1]/hgc)**2 < 1)*(r2d < rgc)
 
 
+def ne_local_ism(xyz, ldr_params, lsb_params, lhb_params, loop_params):
+    """
+    Calculate the contribution of the local ISM to the free
+    electron density at x, y, z = `xyz`
+    """
+    # low density region in Q1
+    neldr = ldr_params['ne']*in_ellisoid(xyz, ldr_params['center'],
+                                         ldr_params['abc'],
+                                         ldr_params['theta'])
+    # Local Super Bubble
+    nelsb = lsb_params['ne']*in_ellisoid(xyz, lsb_params['center'],
+                                         lsb_params['abc'],
+                                         lsb_params['theta'])
+
+    # Local Hot Bubble
+    nelhb = lhb_params['ne']*in_cylinder(xyz, lhb_params['center'],
+                                         lhb_params['abc'],
+                                         lhb_params['theta'])
+    # Loop I
+    irr1 = in_half_sphere(xyz, loop_params['center'], loop_params['r'])
+    irr2 = in_half_sphere(xyz, loop_params['center'],
+                          loop_params['r'] + loop_params['dr'])
+    neloop = loop_params['ne1'] * irr1 + loop_params['ne2'] * irr2*(~irr1)
+    wlhb, wloop, wlsb, wldr = (nelhb > 0,
+                               neloop > 0,
+                               nelsb > 0,
+                               neldr > 0)
+    ne_lism = ((1 - wlhb) *
+               ((1 - wloop) * (wlsb*nelsb + (1-wlsb) * neldr) +
+                wloop*neloop) +
+               wlhb*nelhb)
+
+    wlism = np.maximum(wloop, np.maximum(wldr, np.maximum(wlsb, wlhb)))
+    return ne_lism, wlism
+
+
 def in_ellisoid(xyz, xyz_center, abc_ellipsoid, theta):
     """
     Test if xyz in the ellipsoid
+    Theta in radians
     """
-    xyz = xyz - xyz_center
+    try:
+        xyz = xyz - xyz_center
+    except ValueError:
+        xyz = xyz - xyz_center[:, None]
+        abc_ellipsoid = abc_ellipsoid[:, None]
+
     rot = np.array([[cos(theta), sin(theta)],
                     [-sin(theta), cos(theta)]])
-    xyz[:2] = xyz @ rot
+    xyz[:2] = (xyz[:2].T.dot(rot)).T
 
     xyz_p = xyz/abc_ellipsoid
 
-    return np.sum(xyz_p**2, axis=0) < 1
+    return np.sum(xyz_p**2, axis=0) <= 1
+
+
+def in_cylinder(xyz, xyz_center, abc_cylinder, theta):
+    """
+    Test if xyz in the cylinder
+    Theta in radians
+    """
+    try:
+        xyz = xyz - xyz_center
+    except ValueError:
+        xyz = xyz - xyz_center[:, None]
+        abc_cylinder = np.vstack([abc_cylinder]*xyz.shape[-1]).T
+    xyz[2] -= tan(theta)*xyz[-1]
+
+    abc_cylinder_p = abc_cylinder.copy()
+    z_c = (xyz_center[-1] - abc_cylinder[-1])
+    izz = (xyz[-1] <= 0)*(xyz[-1] <= z_c)
+    abc_cylinder_p[0] = (0.001 +
+                         (abc_cylinder[0] - 0.001) *
+                         (1 - xyz[-1]/z_c))*izz + abc_cylinder[0]*(~izz)
+
+    xyz_p = xyz/abc_cylinder_p
+
+    return (xyz_p[0]**2 + xyz_p[1]**2 <= 1) * (xyz_p[-1]**2 <= 1)
+
+
+def in_half_sphere(xyz, xyz_center, r_sphere):
+    "Test if `xyz` in the sphere with radius r_sphere  centerd at `xyz_center`"
+    try:
+        xyz = xyz - xyz_center
+    except ValueError:
+        xyz = xyz - xyz_center[:, None]
+    distance = sqrt(np.sum(xyz**2, axis=0))
+    return (distance <= r_sphere)*(xyz[-1] >= 0)
+
+
+class Clumps(object):
+    """
+    """
+
+    def __init__(self, clumps_file=None):
+        """
+        """
+        if not clumps_file:
+            this_dir, _ = os.path.split(__file__)
+            clumps_file = os.path.join(this_dir, "data", "neclumpN.NE2001.dat")
+        self._data = Table.read(clumps_file, format='ascii')
+
+    @property
+    def use_clump(self):
+        """
+        """
+        return self._data['flag'] == 0
+
+    @property
+    def xyz(self):
+        """
+        """
+        try:
+            return self._xyz
+        except AttributeError:
+            self._xyz = self.get_xyz()
+        return self._xyz
+
+    @property
+    def gl(self):
+        """
+        Galactic longitude (deg)
+        """
+        return self._data['l']
+
+    @property
+    def gb(self):
+        """
+        Galactic latitude (deg)
+        """
+        return self._data['b']
+
+    @property
+    def distance(self):
+        """
+        Distance from the sun (kpc)
+        """
+        return self._data['dc']
+
+    @property
+    def radius(self):
+        """
+        Radius of the clump (kpc)
+        """
+        return self._data['rc']
+
+    @property
+    def ne(self):
+        """
+        Electron density of each clump (cm^{-3})
+        """
+        return self._data['nec']
+
+    @property
+    def edge(self):
+        """
+        Clump edge
+        0 => use exponential rolloff out to 5 clump radii
+        1 => uniform and truncated at 1/e clump radius
+        """
+        return self._data['edge']
+
+    def get_xyz(self, z_sun=0, rsun=8.5):
+        """
+        """
+        # xyz = SkyCoord(frame="galactic", l=self.gl, b=self.gb,
+        #                distance=self.distance,
+        #                z_sun = z_sun*us.kpc,
+        #                unit="deg, deg, kpc").galactocentric.cartesian.xyz.value
+        # return xyz
+
+        slc = sin(self.gl/180*pi)
+        clc = cos(self.gl/180*pi)
+        sbc = sin(self.gb/180*pi)
+        cbc = cos(self.gb/180*pi)
+        rgalc = self.distance*cbc
+        xc = rgalc*slc
+        yc = rsun-rgalc*clc
+        zc = self.distance*sbc
+        return np.array([xc, yc, zc])
+
+    def clump_factor(self, xyz):
+        """
+        Clump edge
+        0 => use exponential rolloff out to 5 clump radii
+        1 => uniform and truncated at 1/e clump radius
+        """
+        try:
+            xyz = xyz[:, None] - self.xyz
+        except ValueError:
+            xyz = xyz[:, :, None] - self.xyz[:, None, :]
+
+        q2 = (np.sum(xyz**2, axis=0) /
+              self.radius**2)
+        # NOTE: In the original NE2001 code q2 <= 5 is used instead of q <= 5.
+        # TODO: check this
+        return (q2 <= 1)*(self.edge == 1) + (q2 <= 5)*(self.edge == 0)*exp(-q2)
+
+    def ne_clumps(self, xyz):
+        """
+        The contribution of the clumps to the free
+        electron density at x, y, z = `xyz`
+        """
+        return np.sum(self.clump_factor(xyz)*self.ne*self.use_clump, axis=-1)
