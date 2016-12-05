@@ -14,7 +14,7 @@ Overview
         | |coveralls| |codecov|
         | |landscape| |scrutinizer| |codacy| |codeclimate|
 ..    * - package
-..      - |version| |downloads| |wheel| |supported-versions| |supported-implementations|
+
 
    
 .. |docs| image:: https://readthedocs.org/projects/ne2001/badge/?style=flat
@@ -48,26 +48,6 @@ Overview
 .. |codeclimate| image:: https://codeclimate.com/github/benbaror/ne2001/badges/gpa.svg
    :target: https://codeclimate.com/github/benbaror/ne2001
    :alt: CodeClimate Quality Status
-
-.. |version| image:: https://img.shields.io/pypi/v/ne2001.svg?style=flat
-    :alt: PyPI Package latest release
-    :target: https://pypi.python.org/pypi/ne2001
-
-.. |downloads| image:: https://img.shields.io/pypi/dm/ne2001.svg?style=flat
-    :alt: PyPI Package monthly downloads
-    :target: https://pypi.python.org/pypi/ne2001
-
-.. |wheel| image:: https://img.shields.io/pypi/wheel/ne2001.svg?style=flat
-    :alt: PyPI Wheel
-    :target: https://pypi.python.org/pypi/ne2001
-
-.. |supported-versions| image:: https://img.shields.io/pypi/pyversions/ne2001.svg?style=flat
-    :alt: Supported versions
-    :target: https://pypi.python.org/pypi/ne2001
-
-.. |supported-implementations| image:: https://img.shields.io/pypi/implementation/ne2001.svg?style=flat
-    :alt: Supported implementations
-    :target: https://pypi.python.org/pypi/ne2001
 
 .. |scrutinizer| image:: https://img.shields.io/scrutinizer/g/benbaror/ne2001/master.svg?style=flat
     :alt: Scrutinizer Status
