@@ -308,7 +308,7 @@ class Clumps(object):
         """
         return self._data['edge']
 
-    def get_xyz(self, z_sun=0, rsun=8.5):
+    def get_xyz(self, rsun=8.5):
         """
         """
         # xyz = SkyCoord(frame="galactic", l=self.gl, b=self.gb,
