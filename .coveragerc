@@ -1,0 +1,16 @@
+[paths]
+source =
+   src/ne2001
+   */site-packages/ne2001
+
+[run]
+branch = true
+source =
+    ne2001
+    tests
+parallel = true
+
+[report]
+show_missing = true
+precision = 2
+omit = *migrations*

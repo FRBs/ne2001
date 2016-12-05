@@ -1,0 +1,9 @@
+ne2001
+======
+
+.. testsetup::
+
+    from ne2001 import *
+
+.. automodule:: ne2001
+    :members:
