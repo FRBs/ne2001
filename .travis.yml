@@ -13,7 +13,6 @@ env:
     - TOXENV=py33,coveralls,codecov
     - TOXENV=py34,coveralls,codecov
     - TOXENV=py35,coveralls,codecov
-    - TOXENV=pypy,coveralls,codecov
 before_install:
   - python --version
   - uname -a
