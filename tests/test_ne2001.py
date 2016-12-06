@@ -4,6 +4,7 @@ import os
 import numpy as np
 from click.testing import CliRunner
 from numpy.random import rand
+from numpy.random import randint
 
 from ne2001 import density
 from ne2001.cli import main
@@ -52,19 +53,39 @@ def test_geometry():
 
 
 def test_clumps():
-    xyz = (1-2*rand(3, 100)) * 20
     clumps_file = os.path.join(os.path.split(density.__file__)[0], "data",
                                "neclumpN.NE2001.dat")
 
     clumps = density.Clumps(clumps_file)
-    ne_clumps = clumps.ne_clumps(xyz)
-    assert len(ne_clumps) == 100
 
-def test_clumps_local_file():
-    xyz = (1-2*rand(3, 100)) * 20
     clumps = density.Clumps()
+    xyz = (clumps.xyz.T[randint(0, clumps.gl.size, 100)].T +
+           (1-2*rand(3, 100))*0.01)
+
+
     ne_clumps = clumps.ne_clumps(xyz)
     assert len(ne_clumps) == 100
+    ix = ne_clumps.argmax()
+    assert ne_clumps[ix] == clumps.ne_clumps(xyz[:,ix])
+
+
+def test_void():
+    voids_file = os.path.join(os.path.split(density.__file__)[0], "data",
+                              "nevoidN.NE2001.dat")
+
+
+    voids = density.Voids(voids_file)
+
+    voids = density.Voids()
+
+    xyz = (voids.xyz.T[randint(0, voids.gl.size, 100)].T +
+           (1-2*rand(3, 100))*0.01)
+
+    ne_voids = voids.ne_voids(xyz)
+    assert len(ne_voids) == 100
+
+    ix = ne_voids.argmax()
+    assert ne_voids[ix] == voids.ne_voids(xyz[:,ix])
 
 
 def test_local_ism():

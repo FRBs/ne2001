@@ -193,9 +193,8 @@ def in_ellisoid(xyz, xyz_center, abc_ellipsoid, theta):
         xyz = xyz - xyz_center[:, None]
         abc_ellipsoid = abc_ellipsoid[:, None]
 
-    rot = np.array([[cos(theta), sin(theta)],
-                    [-sin(theta), cos(theta)]])
-    xyz[:2] = (xyz[:2].T.dot(rot)).T
+    rot = rotation(theta, -1)
+    xyz = rot.dot(xyz)
 
     xyz_p = xyz/abc_ellipsoid
 
@@ -333,9 +332,9 @@ class Clumps(object):
         0 => use exponential rolloff out to 5 clump radii
         1 => uniform and truncated at 1/e clump radius
         """
-        try:
+        if xyz.ndim == 1:
             xyz = xyz[:, None] - self.xyz
-        except ValueError:
+        else:
             xyz = xyz[:, :, None] - self.xyz[:, None, :]
 
         q2 = (np.sum(xyz**2, axis=0) /
@@ -350,3 +349,164 @@ class Clumps(object):
         electron density at x, y, z = `xyz`
         """
         return np.sum(self.clump_factor(xyz)*self.ne*self.use_clump, axis=-1)
+
+
+class Voids(object):
+    """
+    """
+
+    def __init__(self, voids_file=None):
+        """
+        """
+        if not voids_file:
+            this_dir, _ = os.path.split(__file__)
+            voids_file = os.path.join(this_dir, "data", "nevoidN.NE2001.dat")
+        self._data = Table.read(voids_file, format='ascii')
+
+    @property
+    def use_void(self):
+        """
+        """
+        return self._data['flag'] == 0
+
+    @property
+    def xyz(self):
+        """
+        """
+        try:
+            return self._xyz
+        except AttributeError:
+            self._xyz = self.get_xyz()
+        return self._xyz
+
+    @property
+    def gl(self):
+        """
+        Galactic longitude (deg)
+        """
+        return self._data['l']
+
+    @property
+    def gb(self):
+        """
+        Galactic latitude (deg)
+        """
+        return self._data['b']
+
+    @property
+    def distance(self):
+        """
+        Distance from the sun (kpc)
+        """
+        return self._data['dv']
+
+    @property
+    def ellipsoid_abc(self):
+        """
+        Void axis
+        """
+        return np.array([self._data['aav'],
+                         self._data['bbv'],
+                         self._data['ccv']])
+
+    @property
+    def rotation_y(self):
+        """
+        Rotation around the y axis
+        """
+        return [rotation(theta*pi/180, 1) for theta in self._data['thvy']]
+
+    @property
+    def rotation_z(self):
+        """
+        Rotation around the z axis
+        """
+        return [rotation(theta*pi/180, -1) for theta in self._data['thvz']]
+
+    @property
+    def ne(self):
+        """
+        Electron density of each void (cm^{-3})
+        """
+        return self._data['nev']
+
+    @property
+    def edge(self):
+        """
+        Void edge
+        0 => use exponential rolloff out to 5 clump radii
+        1 => uniform and truncated at 1/e clump radius
+        """
+        return self._data['edge']
+
+    def get_xyz(self, rsun=8.5):
+        """
+        """
+        # xyz = SkyCoord(frame="galactic", l=self.gl, b=self.gb,
+        #                distance=self.distance,
+        #                z_sun = z_sun*us.kpc,
+        #                unit="deg, deg, kpc").galactocentric.cartesian.xyz.value
+        # return xyz
+
+        slc = sin(self.gl/180*pi)
+        clc = cos(self.gl/180*pi)
+        sbc = sin(self.gb/180*pi)
+        cbc = cos(self.gb/180*pi)
+        rgalc = self.distance*cbc
+        xc = rgalc*slc
+        yc = rsun-rgalc*clc
+        zc = self.distance*sbc
+        return np.array([xc, yc, zc])
+
+    def void_factor(self, xyz):
+        """
+        Clump edge
+        0 => use exponential rolloff out to 5 clump radii
+        1 => uniform and truncated at 1/e clump radius
+        """
+        if xyz.ndim == 1:
+            xyz = xyz[:, None] - self.xyz
+            ellipsoid_abc = self.ellipsoid_abc
+        else:
+            xyz = xyz[:, :, None] - self.xyz[:, None, :]
+            ellipsoid_abc = self.ellipsoid_abc[:, None, :]
+
+        xyz = np.array([Rz.dot(Ry).dot(XYZ.T).T
+                        for Rz, Ry, XYZ in
+                        zip(self.rotation_z, self.rotation_y, xyz.T)]).T
+
+        q2 = np.sum(xyz**2 / ellipsoid_abc**2, axis=0)
+        # NOTE: In the original NE2001 code q2 <= 5 is used instead of q <= 5.
+        # TODO: check this
+        return (q2 <= 1)*(self.edge == 1) + (q2 <= 5)*(self.edge == 0)*exp(-q2)
+
+    def ne_voids(self, xyz):
+        """
+        The contribution of the clumps to the free
+        electron density at x, y, z = `xyz`
+        """
+        return np.sum(self.void_factor(xyz)*self.ne*self.use_void, axis=-1)
+
+
+def rotation(theta, axis=-1):
+    """
+    Return a rotation matrix around axis
+    0:x, 1:y, 2:z
+    """
+    ct = cos(theta)
+    st = sin(theta)
+
+    if axis in (0, -3):
+        return np.array([[1, 0, 0],
+                         [0, ct, st],
+                         [0, -st, ct]])
+
+    if axis in (1, -2):
+        return np.array([[ct, 0, st],
+                         [0, 1, 0],
+                         [-st, 0, ct]])
+
+    if axis in (2, -1):
+        return np.array([[ct, st, 0],
+                         [-st, ct, 0],
+                         [0, 0, 1]])
