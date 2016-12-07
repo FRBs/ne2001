@@ -93,6 +93,7 @@ PARAMS = {
                 'radius': 0.120,
                 'e_density': 0.0125,
                 'F': 0.2},
+
     'loop_out': {'center': np.array([-0.045, 8.40, 0.07]),
                  'radius': 0.120 + 0.060,
                  'e_density': 0.0125,
@@ -334,20 +335,20 @@ def in_cylinder(xyz, center, cylinder, theta):
     Test if xyz in the cylinder
     Theta in radians
     """
+    xyz0 = xyz.copy()
     try:
         xyz = xyz - center
     except ValueError:
         xyz = xyz - center[:, None]
         cylinder = np.vstack([cylinder]*xyz.shape[-1]).T
-    xyz[2] -= tan(theta)*xyz[-1]
+    xyz[1] -= tan(theta)*xyz0[-1]
 
     cylinder_p = cylinder.copy()
     z_c = (center[-1] - cylinder[-1])
-    izz = (xyz[-1] <= 0)*(xyz[-1] <= z_c)
+    izz = (xyz0[-1] <= 0)*(xyz0[-1] >= z_c)
     cylinder_p[0] = (0.001 +
                      (cylinder[0] - 0.001) *
-                     (1 - xyz[-1]/z_c))*izz + cylinder[0]*(~izz)
-
+                     (1 - xyz0[-1]/z_c))*izz + cylinder[0]*(~izz)
     xyz_p = xyz/cylinder_p
 
     return (xyz_p[0]**2 + xyz_p[1]**2 <= 1) * (xyz_p[-1]**2 <= 1)
@@ -355,12 +356,13 @@ def in_cylinder(xyz, center, cylinder, theta):
 
 def in_half_sphere(xyz, center, radius):
     "Test if `xyz` in the sphere with radius r_sphere  centerd at `xyz_center`"
+    xyz0 = xyz.copy()
     try:
         xyz = xyz - center
     except ValueError:
         xyz = xyz - center[:, None]
     distance = sqrt(np.sum(xyz**2, axis=0))
-    return (distance <= radius)*(xyz[-1] >= 0)
+    return (distance <= radius)*(xyz0[-1] >= 0)
 
 
 class Clumps(object):
