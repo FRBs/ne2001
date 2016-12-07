@@ -28,25 +28,6 @@ from numpy import tan
 
 # solar_params = {'Rsun': 8.3}
 
-# thick_disk_params = {'n1h1': 0.033,
-#                      'h1': 0.97,
-#                      'A1': 17.5,
-#                      'F1': 0.18}
-
-# thin_disk_params = {'n2': 0.08,
-#                     'h2': 0.15,
-#                     'A2': 3.8,
-#                     'F2': 120}
-
-# galactic_center_params = {'xgc': -0.01,
-#                           'ygc': 0.0,
-#                           'zgc': -0.020,
-#                           'rgc': 0.145,
-#                           'hgc': 0.026,
-#                           'negc0': 10.0,
-#                           'Fgc0': 0.6e5}
-
-
 # spiral_arms_params = {'na': 0.028,
 #                       'ha': 0.23,
 #                       'wa': 0.65,
@@ -73,57 +54,73 @@ from numpy import tan
 #                       'farm4': 1.5,
 #                       'farm5': 0.3}
 
+PARAMS = {
+    'thick_disk': {'e_density': 0.033/0.97,
+                   'height': 0.97,
+                   'radius': 17.5,
+                   'F': 0.18},
 
-ldr_params = {'abc': np.array([1.50, .750, .50]),
-              'center': np.array([1.36, 8.06, 0.0]),
-              'theta': -24.2*pi/180,
-              'ne': 0.012,
-              'F': 0.1}
+    'thin_disk': {'e_density': 0.08,
+                  'height': 0.15,
+                  'radius': 3.8,
+                  'F': 120},
 
-lsb_params = {'abc': np.array([1.050, .4250, .3250]),
-              'center': np.array([-0.75, 9.0, -0.05]),
-              'theta': 139.*pi/180,
-              'ne': 0.016,
-              'F':  0.01}
+    'galactic_center': {'e_density': 10.0,
+                        'center': np.array([-0.01, 0.0, -0.020]),
+                        'radius': 0.145,
+                        'height': 0.026,
+                        'F': 0.6e5},
 
-lhb_params = {'abc': np.array([.0850, .1000, .330]),
-              'center': np.array([0.01, 8.45, 0.17]),
-              'theta': 15*pi/180,
-              'ne': 0.005,
-              'F': 0.01}
+    'ldr': {'ellipsoid': np.array([1.50, .750, .50]),
+            'center': np.array([1.36, 8.06, 0.0]),
+            'theta': -24.2*pi/180,
+            'e_density': 0.012,
+            'F': 0.1},
 
-loop_params = {'center': np.array([-0.045, 8.40, 0.07]),
-               'r': 0.120,
-               'dr': 0.060,
-               'ne1': 0.0125,
-               'ne2': 0.0125,
-               'F1': 0.2,
-               'F2': 0.01}
+    'lsb': {'ellipsoid': np.array([1.050, .4250, .3250]),
+            'center': np.array([-0.75, 9.0, -0.05]),
+            'theta': 139.*pi/180,
+            'e_density': 0.016,
+            'F': 0.01},
+
+    'lhb': {'cylinder': np.array([.0850, .1000, .330]),
+            'center': np.array([0.01, 8.45, 0.17]),
+            'theta': 15*pi/180,
+            'e_density': 0.005,
+            'F': 0.01},
+
+    'loop_in': {'center': np.array([-0.045, 8.40, 0.07]),
+                'radius': 0.120,
+                'e_density': 0.0125,
+                'F': 0.2},
+    'loop_out': {'center': np.array([-0.045, 8.40, 0.07]),
+                 'radius': 0.120 + 0.060,
+                 'e_density': 0.0125,
+                 'F': 0.01}}
 
 
-def ne_thick_disk(xyz, ne_disk, rdisk, hdisk, r_sun):
+def thick_disk(xyz, r_sun, radius, height):
     """
     Calculate the contribution of the thick disk to the free electron density
      at x, y, z = `xyz`
     """
-    r2d = sqrt(xyz[0]**2 + xyz[1]**2)
-    k = pi/2/rdisk
-    return ne_disk * (cos(r2d*k)/cos(r_sun*k) /
-                      cosh(xyz[-1]/hdisk)**2 *
-                      (r2d < rdisk))
+    r_ratio = sqrt(xyz[0]**2 + xyz[1]**2)/radius
+    return (cos(r_ratio*pi/2)/cos(r_sun*pi/2/radius) /
+            cosh(xyz[-1]/height)**2 *
+            (r_ratio < 1))
 
 
-def ne_thin_disk(xyz, ne_disk, rdisk, hdisk):
+def thin_disk(xyz, radius, height):
     """
     Calculate the contribution of the thin disk to the free electron density
      at x, y, z = `xyz`
     """
-    r2d = sqrt(xyz[0]**2 + xyz[1]**2)
-    return ne_disk * (exp(-(r2d - rdisk)**2/1.8**2) /
-                      cosh(xyz[-1]/hdisk)**2)  # Why 1.8?
+    r_ratio = sqrt(xyz[0]**2 + xyz[1]**2)/radius
+    return (exp(-(1 - r_ratio)**2*radius**2/1.8**2) /
+            cosh(xyz[-1]/height)**2)  # Why 1.8?
 
 
-def ne_gc(xyz, ne_gc0, rgc, hgc, xyz_gc):
+def gc(xyz, center, radius, height):
     """
     Calculate the contribution of the Galactic center to the free
     electron density at x, y, z = `xyz`
@@ -131,11 +128,11 @@ def ne_gc(xyz, ne_gc0, rgc, hgc, xyz_gc):
     # Here I'm using the expression in the NE2001 code which is inconsistent
     # with Cordes and Lazio 2011 (0207156v3) (See Table 2)
     try:
-        xyz = xyz - xyz_gc
+        xyz = xyz - center
     except ValueError:
-        xyz = xyz - xyz_gc[:, None]
+        xyz = xyz - center[:, None]
 
-    r2d = sqrt(xyz[0]**2 + xyz[1]**2)
+    r_ratio = sqrt(xyz[0]**2 + xyz[1]**2)/radius
 
     # ????
     # Cordes and Lazio 2011 (0207156v3) (Table 2)
@@ -143,96 +140,203 @@ def ne_gc(xyz, ne_gc0, rgc, hgc, xyz_gc):
     # ????
 
     # Constant ne (form NE2001 code)
-    return ne_gc0*((r2d/rgc)**2 + (xyz[-1]/hgc)**2 < 1)*(r2d < rgc)
+    return (r_ratio**2 + (xyz[-1]/height)**2 < 1)*(r_ratio <= 1)
 
 
-def ne_local_ism(xyz, ldr_params, lsb_params, lhb_params, loop_params):
+class Class_Operation(object):
     """
-    Calculate the contribution of the local ISM to the free
-    electron density at x, y, z = `xyz`
+    Class Operation
     """
-    # low density region in Q1
-    neldr = ldr_params['ne']*in_ellisoid(xyz, ldr_params['center'],
-                                         ldr_params['abc'],
-                                         ldr_params['theta'])
-    # Local Super Bubble
-    nelsb = lsb_params['ne']*in_ellisoid(xyz, lsb_params['center'],
-                                         lsb_params['abc'],
-                                         lsb_params['theta'])
 
-    # Local Hot Bubble
-    nelhb = lhb_params['ne']*in_cylinder(xyz, lhb_params['center'],
-                                         lhb_params['abc'],
-                                         lhb_params['theta'])
-    # Loop I
-    irr1 = in_half_sphere(xyz, loop_params['center'], loop_params['r'])
-    irr2 = in_half_sphere(xyz, loop_params['center'],
-                          loop_params['r'] + loop_params['dr'])
-    neloop = loop_params['ne1'] * irr1 + loop_params['ne2'] * irr2*(~irr1)
-    wlhb, wloop, wlsb, wldr = (nelhb > 0,
-                               neloop > 0,
-                               nelsb > 0,
-                               neldr > 0)
-    ne_lism = ((1 - wlhb) *
-               ((1 - wloop) * (wlsb*nelsb + (1-wlsb) * neldr) +
-                wloop*neloop) +
-               wlhb*nelhb)
+    def __init__(self, operation, cls1, cls2):
+        """
+        """
+        self.cls1 = cls1
+        self.cls2 = cls2
+        self._operation = operation
 
-    wlism = np.maximum(wloop, np.maximum(wldr, np.maximum(wlsb, wlhb)))
-    return ne_lism, wlism
+    def __getattr__(self, arg):
+        return getattr(getattr(self.cls1, arg),
+                       self._operation)(getattr(self.cls2, arg))
 
 
-def in_ellisoid(xyz, xyz_center, abc_ellipsoid, theta):
+class NEobject(object):
+    """
+    A general electron density object
+    """
+
+    def __init__(self, xyz, func, **params):
+        """
+
+        Arguments:
+        - `xyz`: Location where the electron density is calculated
+        - `func`: Electron density function
+        - `**params`: Model parameter
+        """
+        self._xyz = xyz
+        self._func = func
+        self._fparam = params.pop('F')
+        self._ne0 = params.pop('e_density')
+        self._params = params
+
+    def __add__(self, other):
+        return Class_Operation('__add__', self, other)
+
+    def __sub__(self, other):
+        def sub(arg):
+            return getattr(self, arg) - getattr(other, arg)
+        return sub
+
+    @property
+    def xyz(self):
+        "Location where the electron density will be calculated"
+        return self._xyz
+
+    @property
+    def electron_density(self):
+        "Electron density at the location `xyz`"
+        try:
+            return self._ne
+        except AttributeError:
+            self._ne = self._ne0*self._func(self.xyz, **self._params)
+        return self._ne
+
+    @property
+    def wight(self):
+        """
+        Is this object contributing to the electron density
+        at the location `xyz`
+        """
+        return self.electron_density > 0
+
+    @property
+    def w(self):
+        return self.wight
+
+    @property
+    def ne(self):
+        return self.electron_density
+
+    @wight.setter
+    def wight(self, wight):
+        """
+        Is this object contributing to the electron density
+        at the location `xyz`
+        """
+        self._ne = self.ne*wight
+
+    @property
+    def F(self):
+        "Fluctuation parameter"
+        return self.wight*self._fparam
+
+
+class LocalISM(object):
+    """
+    Calculate the contribution of the local ISM
+    to the free electron density at x, y, z = `xyz`
+    """
+
+    def __init__(self, xyz, **params):
+        """
+        """
+        self.xyz = xyz
+        self.ldr = NEobject(xyz, in_ellipsoid, **params['ldr'])
+        self.lsb = NEobject(xyz, in_ellipsoid, **params['lsb'])
+        self.lhb = NEobject(xyz, in_cylinder, **params['lhb'])
+        self.loop_in = NEobject(xyz, in_half_sphere, **params['loop_in'])
+        self.loop_out = NEobject(xyz, in_half_sphere, **params['loop_out'])
+        self.loop_out.wight = ~self.loop_in.w
+        self.loop = self.loop_in + self.loop_out
+
+    @property
+    def electron_density(self):
+        """
+        Calculate the contribution of the local ISM to the free
+        electron density at x, y, z = `xyz`
+        """
+
+        try:
+            return self._nelism
+        except AttributeError:
+            self._nelism = (self.lhb.ne +
+                            (self.loop.ne +
+                             (self.lsb.ne + self.ldr.ne*~self.lsb.w) *
+                             ~self.loop.w)*~self.lhb.w)
+
+        return self._nelism
+
+    @property
+    def flism(self):
+        try:
+            return self._flism
+        except AttributeError:
+            self._flism = (self.lhb.F + ~self.lhb.w *
+                           (self.loop.F + ~self.loop.w *
+                            (self.lsb.F + self.ldr.F*~self.lsb.w)))
+
+        return self._flism
+
+    @property
+    def wlism(self):
+        # This should be equivalent to ne>0
+        # TODO: Check this!
+        return np.maximum(self.loop.w,
+                          np.maximum(self.ldr.w,
+                                     np.maximum(self.lsb.w, self.lhb.w)))
+
+
+def in_ellipsoid(xyz, center, ellipsoid, theta):
     """
     Test if xyz in the ellipsoid
     Theta in radians
     """
     try:
-        xyz = xyz - xyz_center
+        xyz = xyz - center
     except ValueError:
-        xyz = xyz - xyz_center[:, None]
-        abc_ellipsoid = abc_ellipsoid[:, None]
+        xyz = xyz - center[:, None]
+        ellipsoid = ellipsoid[:, None]
 
     rot = rotation(theta, -1)
     xyz = rot.dot(xyz)
 
-    xyz_p = xyz/abc_ellipsoid
+    xyz_p = xyz/ellipsoid
 
     return np.sum(xyz_p**2, axis=0) <= 1
 
 
-def in_cylinder(xyz, xyz_center, abc_cylinder, theta):
+def in_cylinder(xyz, center, cylinder, theta):
     """
     Test if xyz in the cylinder
     Theta in radians
     """
     try:
-        xyz = xyz - xyz_center
+        xyz = xyz - center
     except ValueError:
-        xyz = xyz - xyz_center[:, None]
-        abc_cylinder = np.vstack([abc_cylinder]*xyz.shape[-1]).T
+        xyz = xyz - center[:, None]
+        cylinder = np.vstack([cylinder]*xyz.shape[-1]).T
     xyz[2] -= tan(theta)*xyz[-1]
 
-    abc_cylinder_p = abc_cylinder.copy()
-    z_c = (xyz_center[-1] - abc_cylinder[-1])
+    cylinder_p = cylinder.copy()
+    z_c = (center[-1] - cylinder[-1])
     izz = (xyz[-1] <= 0)*(xyz[-1] <= z_c)
-    abc_cylinder_p[0] = (0.001 +
-                         (abc_cylinder[0] - 0.001) *
-                         (1 - xyz[-1]/z_c))*izz + abc_cylinder[0]*(~izz)
+    cylinder_p[0] = (0.001 +
+                     (cylinder[0] - 0.001) *
+                     (1 - xyz[-1]/z_c))*izz + cylinder[0]*(~izz)
 
-    xyz_p = xyz/abc_cylinder_p
+    xyz_p = xyz/cylinder_p
 
     return (xyz_p[0]**2 + xyz_p[1]**2 <= 1) * (xyz_p[-1]**2 <= 1)
 
 
-def in_half_sphere(xyz, xyz_center, r_sphere):
+def in_half_sphere(xyz, center, radius):
     "Test if `xyz` in the sphere with radius r_sphere  centerd at `xyz_center`"
     try:
-        xyz = xyz - xyz_center
+        xyz = xyz - center
     except ValueError:
-        xyz = xyz - xyz_center[:, None]
+        xyz = xyz - center[:, None]
     distance = sqrt(np.sum(xyz**2, axis=0))
-    return (distance <= r_sphere)*(xyz[-1] >= 0)
+    return (distance <= radius)*(xyz[-1] >= 0)
 
 
 class Clumps(object):
@@ -313,7 +417,8 @@ class Clumps(object):
         # xyz = SkyCoord(frame="galactic", l=self.gl, b=self.gb,
         #                distance=self.distance,
         #                z_sun = z_sun*us.kpc,
-        #                unit="deg, deg, kpc").galactocentric.cartesian.xyz.value
+        #                unit="deg, deg, kpc").galactocentric.
+        #                                      cartesian.xyz.value
         # return xyz
 
         slc = sin(self.gl/180*pi)
@@ -445,7 +550,8 @@ class Voids(object):
         # xyz = SkyCoord(frame="galactic", l=self.gl, b=self.gb,
         #                distance=self.distance,
         #                z_sun = z_sun*us.kpc,
-        #                unit="deg, deg, kpc").galactocentric.cartesian.xyz.value
+        #                unit="deg, deg, kpc").galactocentric.
+        #                cartesian.xyz.value
         # return xyz
 
         slc = sin(self.gl/180*pi)
