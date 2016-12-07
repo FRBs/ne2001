@@ -10,7 +10,7 @@ from numpy import pi
 from numpy import sin
 from numpy import sqrt
 from numpy import tan
-
+from scipy.integrate import quad
 
 # import astropy.units as us
 # from astropy.coordinates import SkyCoord
@@ -183,9 +183,33 @@ class NEobject(object):
         return Class_Operation('__add__', self, other)
 
     def __sub__(self, other):
-        def sub(arg):
-            return getattr(self, arg) - getattr(other, arg)
-        return sub
+        return Class_Operation('__sub_', self, other)
+
+    def __mul__(self, other):
+        return Class_Operation('__mul_', self, other)
+
+    def DM(self, xyz_sun, filter=None):
+        """
+        Calculate the dispersion measure at location `xyz`
+        """
+        n = 1000
+        try:
+            xyz = self.xyz - xyz_sun
+        except ValueError:
+            xyz = self.xyz - xyz_sun[:, None]
+
+        dfinal = sqrt(np.sum(xyz**2, axis=0))
+
+        if filter is None:
+            return quad(lambda x: self._func(xyz_sun + x*xyz, **self._params),
+                        0, 1)[0]*dfinal*1000*self._ne0
+
+        else:
+            return (dfinal*1000*self._ne0 *
+                    sum([quad(lambda x: self._func(xyz_sun + x*xyz,
+                                                   **self._params),
+                              ii/n, (ii+1)/n)[0] for ii in range(n)
+                         if filter(xyz_sun + (2*ii + 1)*xyz/n/2)]))
 
     @property
     def xyz(self):
@@ -616,3 +640,15 @@ def rotation(theta, axis=-1):
         return np.array([[ct, st, 0],
                          [-st, ct, 0],
                          [0, 0, 1]])
+
+
+def galactic_to_galactocentric(l, b, distance, rsun):
+    slc = sin(l/180*pi)
+    clc = cos(l/180*pi)
+    sbc = sin(b/180*pi)
+    cbc = cos(b/180*pi)
+    rgalc = distance*cbc
+    xc = rgalc*slc
+    yc = rsun-rgalc*clc
+    zc = distance*sbc
+    return np.array([xc, yc, zc])

@@ -98,3 +98,16 @@ def test_local_ism():
     assert len(local_ism.electron_density) == len(local_ism.wlism)
     assert all((local_ism.electron_density > 0) == local_ism.wlism)
     assert all((local_ism.flism > 0) == local_ism.wlism)
+
+def test_DM():
+    tol = 1e-3
+    d1 = density.NEobject(np.array([0.1503843,7.647129,0.5000018]),
+                          density.thick_disk, r_sun = 8.5,
+                          **PARAMS['thick_disk'])
+    assert abs(d1.DM(np.array([0,8.5,0])) - 32.36372)/32.36372 < tol
+
+
+    d2 = density.NEobject(np.array([0.1503843,7.647129,0.5000018]),
+                          density.thin_disk,
+                          **PARAMS['thin_disk'])
+    assert abs(d2.DM(np.array([0,8.5,0])) - 0.046937)/0.046937 < tol
