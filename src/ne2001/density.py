@@ -1,5 +1,6 @@
 "Free electron density model"
 import os
+from functools import partial
 
 import numpy as np
 from astropy.table import Table
@@ -175,9 +176,9 @@ class NEobject(object):
         - `**params`: Model parameter
         """
         self._xyz = xyz
-        self._func = func
         self._fparam = params.pop('F')
         self._ne0 = params.pop('e_density')
+        self._func = partial(func, **params)
         self._params = params
 
     def __add__(self, other):
@@ -202,13 +203,12 @@ class NEobject(object):
         dfinal = sqrt(np.sum(xyz**2, axis=0))
 
         if filter is None:
-            return quad(lambda x: self._func(xyz_sun + x*xyz, **self._params),
+            return quad(lambda x: self._func(xyz_sun + x*xyz),
                         0, 1)[0]*dfinal*1000*self._ne0
 
         else:
             return (dfinal*1000*self._ne0 *
-                    sum([quad(lambda x: self._func(xyz_sun + x*xyz,
-                                                   **self._params),
+                    sum([quad(lambda x: self._func(xyz_sun + x*xyz),
                               ii/n, (ii+1)/n)[0] for ii in range(n)
                          if filter(xyz_sun + (2*ii + 1)*xyz/n/2)]))
 
@@ -223,7 +223,7 @@ class NEobject(object):
         try:
             return self._ne
         except AttributeError:
-            self._ne = self._ne0*self._func(self.xyz, **self._params)
+            self._ne = self._ne0*self._func(self.xyz)
         return self._ne
 
     @property
