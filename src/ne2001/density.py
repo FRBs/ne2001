@@ -453,16 +453,8 @@ class Clumps(object):
         #                unit="deg, deg, kpc").galactocentric.
         #                                      cartesian.xyz.value
         # return xyz
-
-        slc = sin(self.gl/180*pi)
-        clc = cos(self.gl/180*pi)
-        sbc = sin(self.gb/180*pi)
-        cbc = cos(self.gb/180*pi)
-        rgalc = self.distance*cbc
-        xc = rgalc*slc
-        yc = rsun-rgalc*clc
-        zc = self.distance*sbc
-        return np.array([xc, yc, zc])
+        return galactic_to_galactocentric(l=self.gl, b=self.gb,
+                                          distance=self.distance, rsun=rsun)
 
     def clump_factor(self, xyz):
         """
@@ -586,16 +578,8 @@ class Voids(object):
         #                unit="deg, deg, kpc").galactocentric.
         #                cartesian.xyz.value
         # return xyz
-
-        slc = sin(self.gl/180*pi)
-        clc = cos(self.gl/180*pi)
-        sbc = sin(self.gb/180*pi)
-        cbc = cos(self.gb/180*pi)
-        rgalc = self.distance*cbc
-        xc = rgalc*slc
-        yc = rsun-rgalc*clc
-        zc = self.distance*sbc
-        return np.array([xc, yc, zc])
+        return galactic_to_galactocentric(l=self.gl, b=self.gb,
+                                          distance=self.distance, rsun=rsun)
 
     def void_factor(self, xyz):
         """
