@@ -311,11 +311,7 @@ class LocalISM(object):
 
     @property
     def wlism(self):
-        # This should be equivalent to ne>0
-        # TODO: Check this!
-        return np.maximum(self.loop.w,
-                          np.maximum(self.ldr.w,
-                                     np.maximum(self.lsb.w, self.lhb.w)))
+        return self.electron_density > 0
 
 
 def in_ellipsoid(xyz, center, ellipsoid, theta):
