@@ -157,9 +157,14 @@ class Class_Operation(object):
         self.cls2 = cls2
         self._operation = operation
 
-    def __getattr__(self, arg):
-        return getattr(getattr(self.cls1, arg),
-                       self._operation)(getattr(self.cls2, arg))
+    def __getattr__(self, attr):
+        try:
+            return getattr(getattr(self.cls1, attr),
+                           self._operation)(getattr(self.cls2, attr))
+        except AttributeError:
+            return lambda *args: getattr(
+                getattr(self.cls1, attr)(*args),
+                self._operation)(getattr(self.cls2, attr)(*args))
 
 
 class NEobject(object):
@@ -167,7 +172,8 @@ class NEobject(object):
     A general electron density object
     """
 
-    def __init__(self, xyz, func, **params):
+    def __init__(self, func, xyz=None, xyz_sun=np.array([0, 8.5, 0]),
+                 **params):
         """
 
         Arguments:
@@ -179,6 +185,7 @@ class NEobject(object):
         self._fparam = params.pop('F')
         self._ne0 = params.pop('e_density')
         self._func = partial(func, **params)
+        self._xyz_sun = xyz_sun
         self._params = params
 
     def __add__(self, other):
@@ -190,27 +197,27 @@ class NEobject(object):
     def __mul__(self, other):
         return Class_Operation('__mul_', self, other)
 
-    def DM(self, xyz_sun, filter=None):
+    def DM(self, xyz, weights=None):
         """
         Calculate the dispersion measure at location `xyz`
         """
         n = 1000
         try:
-            xyz = self.xyz - xyz_sun
+            xyz = xyz - self._xyz_sun
         except ValueError:
-            xyz = self.xyz - xyz_sun[:, None]
+            xyz = xyz - self._xyz_sun[:, None]
 
         dfinal = sqrt(np.sum(xyz**2, axis=0))
 
-        if filter is None:
-            return quad(lambda x: self._func(xyz_sun + x*xyz),
+        if weights is None:
+            return quad(lambda x: self._func(self._xyz_sun + x*xyz),
                         0, 1)[0]*dfinal*1000*self._ne0
 
         else:
             return (dfinal*1000*self._ne0 *
-                    sum([quad(lambda x: self._func(xyz_sun + x*xyz),
+                    sum([quad(lambda x: self._func(self._xyz_sun + x*xyz),
                               ii/n, (ii+1)/n)[0] for ii in range(n)
-                         if filter(xyz_sun + (2*ii + 1)*xyz/n/2)]))
+                         if weights(self._xyz_sun + (2*ii + 1)*xyz/n/2)]))
 
     @property
     def xyz(self):
@@ -266,11 +273,11 @@ class LocalISM(object):
         """
         """
         self.xyz = xyz
-        self.ldr = NEobject(xyz, in_ellipsoid, **params['ldr'])
-        self.lsb = NEobject(xyz, in_ellipsoid, **params['lsb'])
-        self.lhb = NEobject(xyz, in_cylinder, **params['lhb'])
-        self.loop_in = NEobject(xyz, in_half_sphere, **params['loop_in'])
-        self.loop_out = NEobject(xyz, in_half_sphere, **params['loop_out'])
+        self.ldr = NEobject(in_ellipsoid, xyz, **params['ldr'])
+        self.lsb = NEobject(in_ellipsoid, xyz, **params['lsb'])
+        self.lhb = NEobject(in_cylinder, xyz, **params['lhb'])
+        self.loop_in = NEobject(in_half_sphere, xyz, **params['loop_in'])
+        self.loop_out = NEobject(in_half_sphere, xyz, **params['loop_out'])
         self.loop_out.wight = ~self.loop_in.w
         self.loop = self.loop_in + self.loop_out
 

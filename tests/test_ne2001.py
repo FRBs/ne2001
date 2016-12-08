@@ -23,17 +23,17 @@ def test_main():
 def test_density():
     xyz = (1-2*rand(3, 100)) * 20
 
-    ne_disk1 = density.NEobject(xyz, density.thick_disk, r_sun=r_sun,
+    ne_disk1 = density.NEobject(density.thick_disk, xyz, r_sun=r_sun,
                                 **PARAMS['thick_disk']).ne
     assert len(ne_disk1) == 100
     assert all(ne_disk1 >= 0)
 
-    ne_disk2 = density.NEobject(xyz, density.thin_disk,
+    ne_disk2 = density.NEobject(density.thin_disk, xyz,
                                 **PARAMS['thin_disk']).ne
     assert len(ne_disk2) == 100
     assert all(ne_disk2 >= 0)
 
-    ne_gc = density.NEobject(xyz, density.gc, **PARAMS['galactic_center']).ne
+    ne_gc = density.NEobject(density.gc, xyz, **PARAMS['galactic_center']).ne
     assert len(ne_gc) == 100
     assert all(ne_gc >= 0)
 
@@ -99,15 +99,16 @@ def test_local_ism():
     assert all((local_ism.electron_density > 0) == local_ism.wlism)
     assert all((local_ism.flism > 0) == local_ism.wlism)
 
+
 def test_DM():
     tol = 1e-3
-    d1 = density.NEobject(np.array([0.1503843,7.647129,0.5000018]),
-                          density.thick_disk, r_sun = 8.5,
+    d1 = density.NEobject(density.thick_disk, r_sun=8.5,
                           **PARAMS['thick_disk'])
-    assert abs(d1.DM(np.array([0,8.5,0])) - 32.36372)/32.36372 < tol
+    assert (abs(d1.DM(np.array([0.1503843, 7.647129, 0.5000018])) -
+                32.36372) / 32.36372 < tol)
 
 
-    d2 = density.NEobject(np.array([0.1503843,7.647129,0.5000018]),
-                          density.thin_disk,
+    d2 = density.NEobject(density.thin_disk,
                           **PARAMS['thin_disk'])
-    assert abs(d2.DM(np.array([0,8.5,0])) - 0.046937)/0.046937 < tol
+    assert abs(d2.DM(np.array([0.1503843, 7.647129, 0.5000018])) -
+               0.046937)/0.046937 < tol
