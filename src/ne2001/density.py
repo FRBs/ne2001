@@ -145,35 +145,12 @@ def gc(xyz, center, radius, height):
     return (r_ratio**2 + (xyz[-1]/height)**2 < 1)*(r_ratio <= 1)
 
 
-class Class_Operation(object):
-    """
-    Class Operation
-    """
-
-    def __init__(self, operation, cls1, cls2):
-        """
-        """
-        self.cls1 = cls1
-        self.cls2 = cls2
-        self._operation = operation
-
-    def __getattr__(self, attr):
-        try:
-            return getattr(getattr(self.cls1, attr),
-                           self._operation)(getattr(self.cls2, attr))
-        except AttributeError:
-            return lambda *args: getattr(
-                getattr(self.cls1, attr)(*args),
-                self._operation)(getattr(self.cls2, attr)(*args))
-
-
 class NEobject(object):
     """
     A general electron density object
     """
 
-    def __init__(self, func, xyz=None, xyz_sun=np.array([0, 8.5, 0]),
-                 **params):
+    def __init__(self, func, **params):
         """
 
         Arguments:
@@ -181,137 +158,77 @@ class NEobject(object):
         - `func`: Electron density function
         - `**params`: Model parameter
         """
-        self._xyz = xyz
         self._fparam = params.pop('F')
         self._ne0 = params.pop('e_density')
         self._func = partial(func, **params)
-        self._xyz_sun = xyz_sun
         self._params = params
 
-    def __add__(self, other):
-        return Class_Operation('__add__', self, other)
-
-    def __sub__(self, other):
-        return Class_Operation('__sub_', self, other)
-
-    def __mul__(self, other):
-        return Class_Operation('__mul_', self, other)
-
-    def DM(self, xyz, weights=None):
+    def DM(self, xyz, xyz_sun=np.array([0, 8.5, 0])):
         """
         Calculate the dispersion measure at location `xyz`
         """
-        n = 1000
-        try:
-            xyz = xyz - self._xyz_sun
-        except ValueError:
-            xyz = xyz - self._xyz_sun[:, None]
+        xyz = xyz - xyz_sun
 
         dfinal = sqrt(np.sum(xyz**2, axis=0))
 
-        if weights is None:
-            return quad(lambda x: self._func(self._xyz_sun + x*xyz),
-                        0, 1)[0]*dfinal*1000*self._ne0
+        return quad(lambda x: self.ne(xyz_sun + x*xyz),
+                    0, 1)[0]*dfinal*1000
 
-        else:
-            return (dfinal*1000*self._ne0 *
-                    sum([quad(lambda x: self._func(self._xyz_sun + x*xyz),
-                              ii/n, (ii+1)/n)[0] for ii in range(n)
-                         if weights(self._xyz_sun + (2*ii + 1)*xyz/n/2)]))
+    def ne(self, *args):
+        return self.electron_density(*args)
 
-    @property
-    def xyz(self):
-        "Location where the electron density will be calculated"
-        return self._xyz
-
-    @property
-    def electron_density(self):
+    def electron_density(self, xyz):
         "Electron density at the location `xyz`"
-        try:
-            return self._ne
-        except AttributeError:
-            self._ne = self._ne0*self._func(self.xyz)
-        return self._ne
+        return self._ne0*self._func(xyz)
 
     @property
-    def wight(self):
-        """
-        Is this object contributing to the electron density
-        at the location `xyz`
-        """
-        return self.electron_density > 0
-
-    @property
-    def w(self):
-        return self.wight
-
-    @property
-    def ne(self):
-        return self.electron_density
-
-    @wight.setter
-    def wight(self, wight):
-        """
-        Is this object contributing to the electron density
-        at the location `xyz`
-        """
-        self._ne = self.ne*wight
-
-    @property
-    def F(self):
+    def F(self, xyz):
         "Fluctuation parameter"
-        return self.wight*self._fparam
+        return (self.ne(xyz) > 0)*self._fparam
 
 
-class LocalISM(object):
+class NEcombine(NEobject):
+    """
+    """
+
+    def __init__(self, object1, object2):
+        """
+        """
+        self._object1 = object1
+        self._object2 = object2
+
+    def electron_density(self, *args):
+        ne1 = self._object1.ne(*args)
+        ne2 = self._object2.ne(*args)
+        return ne1 + ne2*(ne1 <= 0)
+
+
+class LocalISM(NEobject):
     """
     Calculate the contribution of the local ISM
     to the free electron density at x, y, z = `xyz`
     """
 
-    def __init__(self, xyz, **params):
+    def __init__(self, **params):
         """
         """
-        self.xyz = xyz
-        self.ldr = NEobject(in_ellipsoid, xyz, **params['ldr'])
-        self.lsb = NEobject(in_ellipsoid, xyz, **params['lsb'])
-        self.lhb = NEobject(in_cylinder, xyz, **params['lhb'])
-        self.loop_in = NEobject(in_half_sphere, xyz, **params['loop_in'])
-        self.loop_out = NEobject(in_half_sphere, xyz, **params['loop_out'])
-        self.loop_out.wight = ~self.loop_in.w
-        self.loop = self.loop_in + self.loop_out
+        self.ldr = NEobject(in_ellipsoid, **params['ldr'])
+        self.lsb = NEobject(in_ellipsoid, **params['lsb'])
+        self.lhb = NEobject(in_cylinder, **params['lhb'])
+        self.loop_in = NEobject(in_half_sphere, **params['loop_in'])
+        self.loop_out = NEobject(in_half_sphere, **params['loop_out'])
 
-    @property
-    def electron_density(self):
+        self.loop = NEcombine(self.loop_in, self.loop_out)
+        self._lism = NEcombine(self.lhb,
+                               NEcombine(self.loop,
+                                         NEcombine(self.lsb, self.ldr)))
+
+    def electron_density(self, xyz):
         """
         Calculate the contribution of the local ISM to the free
         electron density at x, y, z = `xyz`
         """
-
-        try:
-            return self._nelism
-        except AttributeError:
-            self._nelism = (self.lhb.ne +
-                            (self.loop.ne +
-                             (self.lsb.ne + self.ldr.ne*~self.lsb.w) *
-                             ~self.loop.w)*~self.lhb.w)
-
-        return self._nelism
-
-    @property
-    def flism(self):
-        try:
-            return self._flism
-        except AttributeError:
-            self._flism = (self.lhb.F + ~self.lhb.w *
-                           (self.loop.F + ~self.loop.w *
-                            (self.lsb.F + self.ldr.F*~self.lsb.w)))
-
-        return self._flism
-
-    @property
-    def wlism(self):
-        return self.electron_density > 0
+        return self._lism.ne(xyz)
 
 
 def in_ellipsoid(xyz, center, ellipsoid, theta):

@@ -23,17 +23,16 @@ def test_main():
 def test_density():
     xyz = (1-2*rand(3, 100)) * 20
 
-    ne_disk1 = density.NEobject(density.thick_disk, xyz, r_sun=r_sun,
-                                **PARAMS['thick_disk']).ne
+    ne_disk1 = density.NEobject(density.thick_disk, r_sun=r_sun,
+                                **PARAMS['thick_disk']).ne(xyz)
     assert len(ne_disk1) == 100
     assert all(ne_disk1 >= 0)
 
-    ne_disk2 = density.NEobject(density.thin_disk, xyz,
-                                **PARAMS['thin_disk']).ne
+    ne_disk2 = density.NEobject(density.thin_disk, **PARAMS['thin_disk']).ne(xyz)
     assert len(ne_disk2) == 100
     assert all(ne_disk2 >= 0)
 
-    ne_gc = density.NEobject(density.gc, xyz, **PARAMS['galactic_center']).ne
+    ne_gc = density.NEobject(density.gc, **PARAMS['galactic_center']).ne(xyz)
     assert len(ne_gc) == 100
     assert all(ne_gc >= 0)
 
@@ -90,15 +89,14 @@ def test_void():
 
 
 def test_local_ism():
+    tol = 1e-3
     xyz = (1-2*rand(3, 100)) * 20
-    local_ism = density.LocalISM(xyz, **PARAMS)
+    local_ism = density.LocalISM(**PARAMS)
 
-    assert all(local_ism.electron_density >= 0)
-    assert len(local_ism.electron_density) == 100
-    assert len(local_ism.electron_density) == len(local_ism.wlism)
-    assert all((local_ism.electron_density > 0) == local_ism.wlism)
-    assert all((local_ism.flism > 0) == local_ism.wlism)
-
+    assert all(local_ism.ne(xyz) >= 0)
+    assert len(local_ism.ne(xyz)) == 100
+    assert (abs(local_ism.DM(np.array([-3.4136981E-02, 7.522445, 0.2079124])) -
+                2.453550)/2.453550 < tol)
 
 def test_DM():
     tol = 1e-3
@@ -110,5 +108,7 @@ def test_DM():
 
     d2 = density.NEobject(density.thin_disk,
                           **PARAMS['thin_disk'])
+
+
     assert abs(d2.DM(np.array([0.1503843, 7.647129, 0.5000018])) -
                0.046937)/0.046937 < tol
