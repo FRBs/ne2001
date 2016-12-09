@@ -13,6 +13,8 @@ from numpy import sqrt
 from numpy import tan
 from scipy.integrate import quad
 
+from .utils import ClassOperation
+
 # import astropy.units as us
 # from astropy.coordinates import SkyCoord
 
@@ -145,7 +147,7 @@ def gc(xyz, center, radius, height):
     return (r_ratio**2 + (xyz[-1]/height)**2 < 1)*(r_ratio <= 1)
 
 
-class NEobject(object):
+class NEobject(ClassOperation):
     """
     A general electron density object
     """
@@ -285,7 +287,7 @@ def in_half_sphere(xyz, center, radius):
     return (distance <= radius)*(xyz0[-1] >= 0)
 
 
-class Clumps(object):
+class Clumps(NEobject):
     """
     """
 
@@ -342,7 +344,7 @@ class Clumps(object):
         return self._data['rc']
 
     @property
-    def ne(self):
+    def ne0(self):
         """
         Electron density of each clump (cm^{-3})
         """
@@ -386,15 +388,15 @@ class Clumps(object):
         # TODO: check this
         return (q2 <= 1)*(self.edge == 1) + (q2 <= 5)*(self.edge == 0)*exp(-q2)
 
-    def ne_clumps(self, xyz):
+    def electron_density(self, xyz):
         """
         The contribution of the clumps to the free
         electron density at x, y, z = `xyz`
         """
-        return np.sum(self.clump_factor(xyz)*self.ne*self.use_clump, axis=-1)
+        return np.sum(self.clump_factor(xyz)*self.ne0*self.use_clump, axis=-1)
 
 
-class Voids(object):
+class Voids(NEobject):
     """
     """
 
@@ -467,7 +469,7 @@ class Voids(object):
         return [rotation(theta*pi/180, -1) for theta in self._data['thvz']]
 
     @property
-    def ne(self):
+    def ne0(self):
         """
         Electron density of each void (cm^{-3})
         """
@@ -516,12 +518,12 @@ class Voids(object):
         # TODO: check this
         return (q2 <= 1)*(self.edge == 1) + (q2 <= 5)*(self.edge == 0)*exp(-q2)
 
-    def ne_voids(self, xyz):
+    def electron_density(self, xyz):
         """
         The contribution of the clumps to the free
         electron density at x, y, z = `xyz`
         """
-        return np.sum(self.void_factor(xyz)*self.ne*self.use_void, axis=-1)
+        return np.sum(self.void_factor(xyz)*self.ne0*self.use_void, axis=-1)
 
 
 def rotation(theta, axis=-1):

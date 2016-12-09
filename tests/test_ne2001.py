@@ -64,13 +64,14 @@ def test_clumps():
     xyz = (clumps.xyz.T[randint(0, clumps.gl.size, 100)].T +
            (1-2*rand(3, 100))*0.01)
 
-    ne_clumps = clumps.ne_clumps(xyz)
+    ne_clumps = clumps.ne(xyz)
     assert len(ne_clumps) == 100
     ix = ne_clumps.argmax()
-    assert ne_clumps[ix] == clumps.ne_clumps(xyz[:, ix])
+    assert ne_clumps[ix] == clumps.ne(xyz[:, ix])
 
 
 def test_void():
+    tol = 1e-3
     voids_file = os.path.join(os.path.split(density.__file__)[0], "data",
                               "nevoidN.NE2001.dat")
 
@@ -81,11 +82,15 @@ def test_void():
     xyz = (voids.xyz.T[randint(0, voids.gl.size, 100)].T +
            (1-2*rand(3, 100))*0.01)
 
-    ne_voids = voids.ne_voids(xyz)
+    ne_voids = voids.ne(xyz)
     assert len(ne_voids) == 100
 
     ix = ne_voids.argmax()
-    assert ne_voids[ix] == voids.ne_voids(xyz[:, ix])
+    assert ne_voids[ix] == voids.ne(xyz[:, ix])
+
+    xyz = np.array([-3.4153607E-02,   7.521969,      0.2080137])
+    DM = 0.9308054
+    assert (voids.DM(xyz) - DM)/DM < tol
 
 
 def test_local_ism():
