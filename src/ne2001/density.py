@@ -11,6 +11,7 @@ from numpy import pi
 from numpy import sqrt
 from numpy import tan
 from scipy.integrate import quad as integrate
+from numba import jit
 
 from .utils import ClassOperation
 from .utils import galactic_to_galactocentric
@@ -259,11 +260,7 @@ class Clumps(NEobject):
     def xyz(self):
         """
         """
-        try:
-            return self._xyz
-        except AttributeError:
-            self._xyz = self.get_xyz()
-        return self._xyz
+        return self.get_xyz()
 
     @lzproperty
     def gl(self):
@@ -287,11 +284,11 @@ class Clumps(NEobject):
         return self._data['dc']
 
     @lzproperty
-    def radius(self):
+    def radius2(self):
         """
         Radius of the clump (kpc)
         """
-        return self._data['rc']
+        return self._data['rc']**2
 
     @lzproperty
     def ne0(self):
@@ -328,15 +325,19 @@ class Clumps(NEobject):
         1 => uniform and truncated at 1/e clump radius
         """
         if xyz.ndim == 1:
-            xyz = xyz[:, None] - self.xyz
+            return clump_factor(xyz, self.xyz, self.radius2, self.edge)
         else:
             xyz = xyz[:, :, None] - self.xyz[:, None, :]
 
         q2 = (np.sum(xyz**2, axis=0) /
-              self.radius**2)
+              self.radius2)
         # NOTE: In the original NE2001 code q2 <= 5 is used instead of q <= 5.
         # TODO: check this
-        return (q2 <= 1)*(self.edge == 1) + (q2 <= 5)*(self.edge == 0)*exp(-q2)
+        q5 = (q2 <= 5)*(self.edge == 0)
+        res = np.zeros_like(q2)
+        res[(q2 <= 1)*(self.edge == 1)] = 1
+        res[q5] = exp(-q2[q5])
+        return res
 
     def electron_density(self, xyz):
         """
@@ -549,3 +550,22 @@ def in_half_sphere(xyz, center, radius):
         xyz = xyz - center[:, None]
     distance = sqrt(np.sum(xyz**2, axis=0))
     return (distance <= radius)*(xyz0[-1] >= 0)
+
+
+@jit
+def clump_factor(xyz, xyz0, r2, edge):
+    """
+    Clump edge
+    0 => use exponential rolloff out to 5 clump radii
+    1 => uniform and truncated at 1/e clump radius
+    """
+    xyz = (xyz - xyz0.T).T
+
+    q2 = (xyz[0]**2 + xyz[1]**2 + xyz[2]**2) / r2
+    # NOTE: In the original NE2001 code q2 <= 5 is used instead of q <= 5.
+    # TODO: check this
+    q5 = (q2 <= 5)*(edge == 0)
+    res = np.zeros_like(q2)
+    res[(q2 <= 1)*(edge == 1)] = 1
+    res[q5] = exp(-q2[q5])
+    return res
