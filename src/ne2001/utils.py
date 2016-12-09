@@ -1,7 +1,24 @@
 "Some utility methods"
 
 
-class ClassOperationResult(object):
+class ClassOperation(object):
+    """
+    Define arithmetic operation on Class
+    """
+    def __add__(self, other):
+        return ClassOperationResult('__add__', self, other)
+
+    def __sub__(self, other):
+        return ClassOperationResult('__sub__', self, other)
+
+    def __mul__(self, other):
+        return ClassOperationResult('__mul__', self, other)
+
+    def __gt__(self, other):
+        return ClassOperationResult('__gt__', self, other)
+
+
+class ClassOperationResult(ClassOperation):
     """
     Result of Class Operation
     """
@@ -22,20 +39,3 @@ class ClassOperationResult(object):
         except AttributeError:
             return (lambda *args, **kwargs:
                     getattr(attr1(*args), self._operation)(attr2(*args)))
-
-
-class ClassOperation(object):
-    """
-    Define arithmetic operation on Class
-    """
-    def __add__(self, other):
-        return ClassOperationResult('__add__', self, other)
-
-    def __sub__(self, other):
-        return ClassOperationResult('__sub__', self, other)
-
-    def __mul__(self, other):
-        return ClassOperationResult('__mul__', self, other)
-
-    def __gt__(self, other):
-        return ClassOperationResult('__gt__', self, other)
