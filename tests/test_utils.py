@@ -1,7 +1,7 @@
-from ne2001.utils import Class_Operation
+from ne2001.utils import ClassOperation
 
 
-class Foo(Class_Operation):
+class Foo(ClassOperation):
     """
     """
 
