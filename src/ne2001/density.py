@@ -8,12 +8,13 @@ from numpy import cos
 from numpy import cosh
 from numpy import exp
 from numpy import pi
-from numpy import sin
 from numpy import sqrt
 from numpy import tan
 from scipy.integrate import quad
 
 from .utils import ClassOperation
+from .utils import galactic_to_galactocentric
+from .utils import rotation
 
 # import astropy.units as us
 # from astropy.coordinates import SkyCoord
@@ -231,60 +232,6 @@ class LocalISM(NEobject):
         electron density at x, y, z = `xyz`
         """
         return self._lism.ne(xyz)
-
-
-def in_ellipsoid(xyz, center, ellipsoid, theta):
-    """
-    Test if xyz in the ellipsoid
-    Theta in radians
-    """
-    try:
-        xyz = xyz - center
-    except ValueError:
-        xyz = xyz - center[:, None]
-        ellipsoid = ellipsoid[:, None]
-
-    rot = rotation(theta, -1)
-    xyz = rot.dot(xyz)
-
-    xyz_p = xyz/ellipsoid
-
-    return np.sum(xyz_p**2, axis=0) <= 1
-
-
-def in_cylinder(xyz, center, cylinder, theta):
-    """
-    Test if xyz in the cylinder
-    Theta in radians
-    """
-    xyz0 = xyz.copy()
-    try:
-        xyz = xyz - center
-    except ValueError:
-        xyz = xyz - center[:, None]
-        cylinder = np.vstack([cylinder]*xyz.shape[-1]).T
-    xyz[1] -= tan(theta)*xyz0[-1]
-
-    cylinder_p = cylinder.copy()
-    z_c = (center[-1] - cylinder[-1])
-    izz = (xyz0[-1] <= 0)*(xyz0[-1] >= z_c)
-    cylinder_p[0] = (0.001 +
-                     (cylinder[0] - 0.001) *
-                     (1 - xyz0[-1]/z_c))*izz + cylinder[0]*(~izz)
-    xyz_p = xyz/cylinder_p
-
-    return (xyz_p[0]**2 + xyz_p[1]**2 <= 1) * (xyz_p[-1]**2 <= 1)
-
-
-def in_half_sphere(xyz, center, radius):
-    "Test if `xyz` in the sphere with radius r_sphere  centerd at `xyz_center`"
-    xyz0 = xyz.copy()
-    try:
-        xyz = xyz - center
-    except ValueError:
-        xyz = xyz - center[:, None]
-    distance = sqrt(np.sum(xyz**2, axis=0))
-    return (distance <= radius)*(xyz0[-1] >= 0)
 
 
 class Clumps(NEobject):
@@ -526,42 +473,6 @@ class Voids(NEobject):
         return np.sum(self.void_factor(xyz)*self.ne0*self.use_void, axis=-1)
 
 
-def rotation(theta, axis=-1):
-    """
-    Return a rotation matrix around axis
-    0:x, 1:y, 2:z
-    """
-    ct = cos(theta)
-    st = sin(theta)
-
-    if axis in (0, -3):
-        return np.array([[1, 0, 0],
-                         [0, ct, st],
-                         [0, -st, ct]])
-
-    if axis in (1, -2):
-        return np.array([[ct, 0, st],
-                         [0, 1, 0],
-                         [-st, 0, ct]])
-
-    if axis in (2, -1):
-        return np.array([[ct, st, 0],
-                         [-st, ct, 0],
-                         [0, 0, 1]])
-
-
-def galactic_to_galactocentric(l, b, distance, rsun):
-    slc = sin(l/180*pi)
-    clc = cos(l/180*pi)
-    sbc = sin(b/180*pi)
-    cbc = cos(b/180*pi)
-    rgalc = distance*cbc
-    xc = rgalc*slc
-    yc = rsun-rgalc*clc
-    zc = distance*sbc
-    return np.array([xc, yc, zc])
-
-
 class ElectronDensity(NEobject):
     """
     A class holding all the elements which contribute to free electron density
@@ -588,3 +499,57 @@ class ElectronDensity(NEobject):
 
     def electron_density(self, xyz):
         return self._combined.ne(xyz)
+
+
+def in_ellipsoid(xyz, center, ellipsoid, theta):
+    """
+    Test if xyz in the ellipsoid
+    Theta in radians
+    """
+    try:
+        xyz = xyz - center
+    except ValueError:
+        xyz = xyz - center[:, None]
+        ellipsoid = ellipsoid[:, None]
+
+    rot = rotation(theta, -1)
+    xyz = rot.dot(xyz)
+
+    xyz_p = xyz/ellipsoid
+
+    return np.sum(xyz_p**2, axis=0) <= 1
+
+
+def in_cylinder(xyz, center, cylinder, theta):
+    """
+    Test if xyz in the cylinder
+    Theta in radians
+    """
+    xyz0 = xyz.copy()
+    try:
+        xyz = xyz - center
+    except ValueError:
+        xyz = xyz - center[:, None]
+        cylinder = np.vstack([cylinder]*xyz.shape[-1]).T
+    xyz[1] -= tan(theta)*xyz0[-1]
+
+    cylinder_p = cylinder.copy()
+    z_c = (center[-1] - cylinder[-1])
+    izz = (xyz0[-1] <= 0)*(xyz0[-1] >= z_c)
+    cylinder_p[0] = (0.001 +
+                     (cylinder[0] - 0.001) *
+                     (1 - xyz0[-1]/z_c))*izz + cylinder[0]*(~izz)
+    xyz_p = xyz/cylinder_p
+
+    return (xyz_p[0]**2 + xyz_p[1]**2 <= 1) * (xyz_p[-1]**2 <= 1)
+
+
+def in_half_sphere(xyz, center, radius):
+    "Test if `xyz` in the sphere with radius r_sphere  centerd at `xyz_center`"
+    xyz0 = xyz.copy()
+    try:
+        xyz = xyz - center
+    except ValueError:
+        xyz = xyz - center[:, None]
+    distance = sqrt(np.sum(xyz**2, axis=0))
+    return (distance <= radius)*(xyz0[-1] >= 0)

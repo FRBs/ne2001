@@ -1,4 +1,8 @@
 "Some utility methods"
+import numpy as np
+from numpy import cos
+from numpy import pi
+from numpy import sin
 
 
 class ClassOperation(object):
@@ -39,3 +43,39 @@ class ClassOperationResult(ClassOperation):
         except AttributeError:
             return (lambda *args, **kwargs:
                     getattr(attr1(*args), self._operation)(attr2(*args)))
+
+
+def rotation(theta, axis=-1):
+    """
+    Return a rotation matrix around axis
+    0:x, 1:y, 2:z
+    """
+    ct = cos(theta)
+    st = sin(theta)
+
+    if axis in (0, -3):
+        return np.array([[1, 0, 0],
+                         [0, ct, st],
+                         [0, -st, ct]])
+
+    if axis in (1, -2):
+        return np.array([[ct, 0, st],
+                         [0, 1, 0],
+                         [-st, 0, ct]])
+
+    if axis in (2, -1):
+        return np.array([[ct, st, 0],
+                         [-st, ct, 0],
+                         [0, 0, 1]])
+
+
+def galactic_to_galactocentric(l, b, distance, rsun):
+    slc = sin(l/180*pi)
+    clc = cos(l/180*pi)
+    sbc = sin(b/180*pi)
+    cbc = cos(b/180*pi)
+    rgalc = distance*cbc
+    xc = rgalc*slc
+    yc = rsun-rgalc*clc
+    zc = distance*sbc
+    return np.array([xc, yc, zc])
