@@ -560,3 +560,31 @@ def galactic_to_galactocentric(l, b, distance, rsun):
     yc = rsun-rgalc*clc
     zc = distance*sbc
     return np.array([xc, yc, zc])
+
+
+class ElectronDensity(NEobject):
+    """
+    A class holding all the elements which contribute to free electron density
+    """
+
+    def __init__(self, r_sun=8.5, clumps_file=None, voids_file=None,
+                 **params):
+        """
+        """
+        self._params = params
+        self._thick_disk = NEobject(thick_disk, r_sun=r_sun,
+                                    **params['thick_disk'])
+        self._thin_disk = NEobject(thin_disk, **params['thin_disk'])
+        self._galactic_center = NEobject(gc, **params['galactic_center'])
+        self._lism = LocalISM(**params)
+        self._clumps = Clumps(clumps_file=clumps_file)
+        self._voids = Voids(voids_file=voids_file)
+        self._combined = (NEcombine(self._voids,
+                                    NEcombine(self._lism,
+                                              self._thick_disk +
+                                              self._thin_disk +
+                                              self._galactic_center)) +
+                          self._galactic_center)
+
+    def electron_density(self, xyz):
+        return self._combined.ne(xyz)

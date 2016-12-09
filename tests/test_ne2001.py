@@ -117,3 +117,11 @@ def test_DM():
 
     assert abs(d2.DM(np.array([0.1503843, 7.647129, 0.5000018])) -
                0.046937)/0.046937 < tol
+
+
+def test_electron_density():
+    tol = 1e-3
+    ne = density.ElectronDensity(**PARAMS)
+    xyz = np.array([-3.4153607E-02,   7.521969,      0.2080137])
+    DM = 28.40765
+    assert (ne.DM(xyz) - DM)/DM < tol
