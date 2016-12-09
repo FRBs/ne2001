@@ -90,7 +90,7 @@ def test_void():
 
     xyz = np.array([-3.4153607E-02,   7.521969,      0.2080137])
     DM = 0.9308054
-    assert (voids.DM(xyz) - DM)/DM < tol
+    assert abs(voids.DM(xyz) - DM)/DM < tol
 
 
 def test_local_ism():
@@ -107,21 +107,24 @@ def test_DM():
     tol = 1e-3
     d1 = density.NEobject(density.thick_disk, r_sun=8.5,
                           **PARAMS['thick_disk'])
-    assert (abs(d1.DM(np.array([0.1503843, 7.647129, 0.5000018])) -
-                32.36372) / 32.36372 < tol)
+    xyz = np.array([0.1503843, 7.647129, 0.5000018])
+    DM = 32.36372
+    assert abs(d1.DM(xyz) - DM) / DM  < tol
 
 
     d2 = density.NEobject(density.thin_disk,
                           **PARAMS['thin_disk'])
 
+    np.array([0.1503843, 7.647129, 0.5000018])
+    DM = 32.36372
 
-    assert abs(d2.DM(np.array([0.1503843, 7.647129, 0.5000018])) -
-               0.046937)/0.046937 < tol
-
+    xyz = np.array([0.1503843, 7.647129, 0.5000018])
+    DM = 0.046937
+    assert abs(d2.DM(xyz) - DM) / DM  < tol
 
 def test_electron_density():
     tol = 1e-3
     ne = density.ElectronDensity(**PARAMS)
     xyz = np.array([-3.4153607E-02,   7.521969,      0.2080137])
-    DM = 28.40765
-    assert (ne.DM(xyz) - DM)/DM < tol
+    DM = 23.98557
+    assert abs(ne.DM(xyz) - DM)/DM < tol

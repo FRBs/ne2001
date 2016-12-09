@@ -10,10 +10,11 @@ from numpy import exp
 from numpy import pi
 from numpy import sqrt
 from numpy import tan
-from scipy.integrate import quad
+from scipy.integrate import quad as integrate
 
 from .utils import ClassOperation
 from .utils import galactic_to_galactocentric
+from .utils import lzproperty
 from .utils import rotation
 
 # import astropy.units as us
@@ -166,16 +167,18 @@ class NEobject(ClassOperation):
         self._func = partial(func, **params)
         self._params = params
 
-    def DM(self, xyz, xyz_sun=np.array([0, 8.5, 0])):
+    def DM(self, xyz, xyz_sun=np.array([0, 8.5, 0]),
+           epsrel=1e-4, epsabs=1e-6,
+           *arg, **kwargs):
         """
         Calculate the dispersion measure at location `xyz`
         """
         xyz = xyz - xyz_sun
 
         dfinal = sqrt(np.sum(xyz**2, axis=0))
-
-        return quad(lambda x: self.ne(xyz_sun + x*xyz),
-                    0, 1)[0]*dfinal*1000
+        return integrate(lambda x: self.ne(xyz_sun + x*xyz),
+                         0, 1, *arg, epsrel=epsrel, epsabs=epsabs,
+                         **kwargs)[0]*dfinal*1000
 
     def ne(self, *args):
         return self.electron_density(*args)
@@ -246,13 +249,13 @@ class Clumps(NEobject):
             clumps_file = os.path.join(this_dir, "data", "neclumpN.NE2001.dat")
         self._data = Table.read(clumps_file, format='ascii')
 
-    @property
+    @lzproperty
     def use_clump(self):
         """
         """
         return self._data['flag'] == 0
 
-    @property
+    @lzproperty
     def xyz(self):
         """
         """
@@ -262,42 +265,42 @@ class Clumps(NEobject):
             self._xyz = self.get_xyz()
         return self._xyz
 
-    @property
+    @lzproperty
     def gl(self):
         """
         Galactic longitude (deg)
         """
         return self._data['l']
 
-    @property
+    @lzproperty
     def gb(self):
         """
         Galactic latitude (deg)
         """
         return self._data['b']
 
-    @property
+    @lzproperty
     def distance(self):
         """
         Distance from the sun (kpc)
         """
         return self._data['dc']
 
-    @property
+    @lzproperty
     def radius(self):
         """
         Radius of the clump (kpc)
         """
         return self._data['rc']
 
-    @property
+    @lzproperty
     def ne0(self):
         """
         Electron density of each clump (cm^{-3})
         """
         return self._data['nec']
 
-    @property
+    @lzproperty
     def edge(self):
         """
         Clump edge
@@ -355,13 +358,13 @@ class Voids(NEobject):
             voids_file = os.path.join(this_dir, "data", "nevoidN.NE2001.dat")
         self._data = Table.read(voids_file, format='ascii')
 
-    @property
+    @lzproperty
     def use_void(self):
         """
         """
         return self._data['flag'] == 0
 
-    @property
+    @lzproperty
     def xyz(self):
         """
         """
@@ -371,28 +374,28 @@ class Voids(NEobject):
             self._xyz = self.get_xyz()
         return self._xyz
 
-    @property
+    @lzproperty
     def gl(self):
         """
         Galactic longitude (deg)
         """
         return self._data['l']
 
-    @property
+    @lzproperty
     def gb(self):
         """
         Galactic latitude (deg)
         """
         return self._data['b']
 
-    @property
+    @lzproperty
     def distance(self):
         """
         Distance from the sun (kpc)
         """
         return self._data['dv']
 
-    @property
+    @lzproperty
     def ellipsoid_abc(self):
         """
         Void axis
@@ -401,28 +404,28 @@ class Voids(NEobject):
                          self._data['bbv'],
                          self._data['ccv']])
 
-    @property
+    @lzproperty
     def rotation_y(self):
         """
         Rotation around the y axis
         """
         return [rotation(theta*pi/180, 1) for theta in self._data['thvy']]
 
-    @property
+    @lzproperty
     def rotation_z(self):
         """
         Rotation around the z axis
         """
         return [rotation(theta*pi/180, -1) for theta in self._data['thvz']]
 
-    @property
+    @lzproperty
     def ne0(self):
         """
         Electron density of each void (cm^{-3})
         """
         return self._data['nev']
 
-    @property
+    @lzproperty
     def edge(self):
         """
         Void edge
@@ -495,7 +498,7 @@ class ElectronDensity(NEobject):
                                               self._thick_disk +
                                               self._thin_disk +
                                               self._galactic_center)) +
-                          self._galactic_center)
+                          self._clumps)
 
     def electron_density(self, xyz):
         return self._combined.ne(xyz)

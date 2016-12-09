@@ -5,6 +5,22 @@ from numpy import pi
 from numpy import sin
 
 
+def lzproperty(attribute):
+    """
+    Lazy property: evaluate property only once
+    """
+    save_att = '_' + attribute.__name__
+
+    @property
+    def _get(self):
+        try:
+            return getattr(self, save_att)
+        except AttributeError:
+            setattr(self, save_att, attribute(self))
+        return getattr(self, save_att)
+    return _get
+
+
 class ClassOperation(object):
     """
     Define arithmetic operation on Class
