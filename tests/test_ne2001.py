@@ -5,6 +5,7 @@ import numpy as np
 from click.testing import CliRunner
 from numpy.random import rand
 from numpy.random import randint
+from scipy import integrate
 
 from ne2001 import density
 from ne2001.cli import main
@@ -122,9 +123,16 @@ def test_DM():
     DM = 0.046937
     assert abs(d2.DM(xyz) - DM) / DM  < tol
 
-def test_electron_density():
+def test_electron_density_quad():
     tol = 1e-3
     ne = density.ElectronDensity(**PARAMS)
     xyz = np.array([-3.4153607E-02,   7.521969,      0.2080137])
     DM = 23.98557
     assert abs(ne.DM(xyz) - DM)/DM < tol
+
+def test_electron_density_trapz():
+    tol = 1e-3
+    ne = density.ElectronDensity(**PARAMS)
+    xyz = np.array([-3.4153607E-02,   7.521969,      0.2080137])
+    DM = 23.98557
+    assert abs(ne.DM(xyz, integrator=integrate.trapz) - DM)/DM < tol

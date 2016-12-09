@@ -10,7 +10,7 @@ from numpy import exp
 from numpy import pi
 from numpy import sqrt
 from numpy import tan
-from scipy.integrate import quad as integrate
+from scipy.integrate import quad
 
 from .utils import ClassOperation
 from .utils import galactic_to_galactocentric
@@ -171,7 +171,7 @@ class NEobject(ClassOperation):
         self._params = params
 
     def DM(self, xyz, xyz_sun=np.array([0, 8.5, 0]),
-           epsrel=1e-4, epsabs=1e-6,
+           epsrel=1e-4, epsabs=1e-6, integrator=quad, step_size=0.001,
            *arg, **kwargs):
         """
         Calculate the dispersion measure at location `xyz`
@@ -179,9 +179,16 @@ class NEobject(ClassOperation):
         xyz = xyz - xyz_sun
 
         dfinal = sqrt(np.sum(xyz**2, axis=0))
-        return integrate(lambda x: self.ne(xyz_sun + x*xyz),
-                         0, 1, *arg, epsrel=epsrel, epsabs=epsabs,
-                         **kwargs)[0]*dfinal*1000
+        if integrator.__name__ is 'quad':
+            return integrator(lambda x: self.ne(xyz_sun + x*xyz),
+                              0, 1, *arg, epsrel=epsrel, epsabs=epsabs,
+                              **kwargs)[0]*dfinal*1000
+        else:  # Assuming sapling integrator
+            nsamp = dfinal/step_size
+            x = np.linspace(0, 1, nsamp)
+            xyz = xyz_sun[:, None] + x*xyz[:, None]
+            ne = self.ne(xyz)
+            return integrator(ne)*dfinal*1000/x.size
 
     def ne(self, *args):
         return self.electron_density(*args)
