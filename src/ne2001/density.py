@@ -368,11 +368,14 @@ class Voids(NEobject):
     def xyz(self):
         """
         """
-        try:
-            return self._xyz
-        except AttributeError:
-            self._xyz = self.get_xyz()
-        return self._xyz
+        return self.get_xyz()
+
+    @lzproperty
+    def xyz_rot(self):
+        """
+        """
+        return np.array([R.dot(xyzi) for R,
+                         xyzi in zip(self.rotation, self.xyz.T)]).T
 
     @lzproperty
     def gl(self):
@@ -405,18 +408,17 @@ class Voids(NEobject):
                          self._data['ccv']])
 
     @lzproperty
-    def rotation_y(self):
+    def rotation(self):
         """
-        Rotation around the y axis
+        Rotation and rescaling matrix
         """
-        return [rotation(theta*pi/180, 1) for theta in self._data['thvy']]
-
-    @lzproperty
-    def rotation_z(self):
-        """
-        Rotation around the z axis
-        """
-        return [rotation(theta*pi/180, -1) for theta in self._data['thvz']]
+        return np.array([
+            (rotation(thetaz*pi/180, -1).dot(
+                rotation(thetay*pi/180, 1)).T/abc).T
+            for thetaz, thetay, abc
+            in zip(self._data['thvz'], self._data['thvy'],
+                   self.ellipsoid_abc.T)
+        ])
 
     @lzproperty
     def ne0(self):
@@ -452,18 +454,9 @@ class Voids(NEobject):
         0 => use exponential rolloff out to 5 clump radii
         1 => uniform and truncated at 1/e clump radius
         """
-        if xyz.ndim == 1:
-            xyz = xyz[:, None] - self.xyz
-            ellipsoid_abc = self.ellipsoid_abc
-        else:
-            xyz = xyz[:, :, None] - self.xyz[:, None, :]
-            ellipsoid_abc = self.ellipsoid_abc[:, None, :]
+        xyz = (self.rotation.dot(xyz).T - self.xyz_rot).T
 
-        xyz = np.array([Rz.dot(Ry).dot(XYZ.T).T
-                        for Rz, Ry, XYZ in
-                        zip(self.rotation_z, self.rotation_y, xyz.T)]).T
-
-        q2 = np.sum(xyz**2 / ellipsoid_abc**2, axis=0)
+        q2 = np.sum(xyz**2, axis=1).T
         # NOTE: In the original NE2001 code q2 <= 5 is used instead of q <= 5.
         # TODO: check this
         return (q2 <= 1)*(self.edge == 1) + (q2 <= 5)*(self.edge == 0)*exp(-q2)
