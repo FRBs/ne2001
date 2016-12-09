@@ -10,6 +10,7 @@ from numpy import exp
 from numpy import pi
 from numpy import sqrt
 from numpy import tan
+from scipy.integrate import cumtrapz
 from scipy.integrate import quad
 
 from .utils import ClassOperation
@@ -162,6 +163,7 @@ class NEobject(ClassOperation):
         - `func`: Electron density function
         - `**params`: Model parameter
         """
+        self._params = params
         self._fparam = params.pop('F')
         self._ne0 = params.pop('e_density')
         try:
@@ -183,12 +185,33 @@ class NEobject(ClassOperation):
             return integrator(lambda x: self.ne(xyz_sun + x*xyz),
                               0, 1, *arg, epsrel=epsrel, epsabs=epsabs,
                               **kwargs)[0]*dfinal*1000
-        else:  # Assuming sapling integrator
-            nsamp = dfinal/step_size
+        else:   # Assuming sapling integrator
+            nsamp = max(1000, dfinal/step_size)
             x = np.linspace(0, 1, nsamp)
             xyz = xyz_sun[:, None] + x*xyz[:, None]
             ne = self.ne(xyz)
-            return integrator(ne)*dfinal*1000/x.size
+            return integrator(ne)*dfinal*1000/nsamp
+
+    def dist(self, l, b, DM, rsun=8.5, step_size=0.0001):
+        """
+        Estimate the distance to an object with dispersion measure `DM`
+        located at the direction `l ,b'
+        """
+
+        # Initial guess
+        dist0 = DM/PARAMS['thick_disk']['e_density']/1000
+
+        while self.DM(galactic_to_galactocentric(l, b, dist0, rsun)) < DM:
+            dist0 *= 2
+
+        nsamp = max(1000, dist0/step_size)
+        d_samp = np.linspace(0, dist0, nsamp)
+        step_size = np.diff(d_samp[:2])
+        ne_samp = self.ne(galactic_to_galactocentric(l, b, d_samp, rsun))
+        d_samp = (d_samp[1:] + d_samp[:-1])/2
+        dm_samp = cumtrapz(ne_samp)*1000*step_size
+        dist = np.interp(DM, dm_samp, d_samp)
+        return dist
 
     def ne(self, *args):
         return self.electron_density(*args)

@@ -8,6 +8,7 @@ from numpy.random import randint
 from scipy import integrate
 
 from ne2001 import density
+from ne2001 import utils
 from ne2001.cli import main
 
 PARAMS = density.PARAMS
@@ -123,6 +124,7 @@ def test_DM():
     DM = 0.046937
     assert abs(d2.DM(xyz) - DM) / DM  < tol
 
+
 def test_electron_density_quad():
     tol = 1e-3
     ne = density.ElectronDensity(**PARAMS)
@@ -130,9 +132,22 @@ def test_electron_density_quad():
     DM = 23.98557
     assert abs(ne.DM(xyz) - DM)/DM < tol
 
+
 def test_electron_density_trapz():
     tol = 1e-3
     ne = density.ElectronDensity(**PARAMS)
     xyz = np.array([-3.4153607E-02,   7.521969,      0.2080137])
     DM = 23.98557
     assert abs(ne.DM(xyz, integrator=integrate.trapz) - DM)/DM < tol
+
+
+def test_dist():
+    for i in range(10):
+        tol = 1e-3
+        ne = density.ElectronDensity(**PARAMS)
+        l = rand()*2*np.pi
+        b = np.arccos(1 - 2*rand())
+        d = rand()*10
+        rsun = 8.5
+        DM = ne.DM(utils.galactic_to_galactocentric(l, b, d, rsun))
+        assert abs(ne.dist(l, b, DM, rsun) - d)/d < tol, (l, b, d)
