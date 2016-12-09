@@ -11,7 +11,6 @@ from numpy import pi
 from numpy import sqrt
 from numpy import tan
 from scipy.integrate import quad as integrate
-from numba import jit
 
 from .utils import ClassOperation
 from .utils import galactic_to_galactocentric
@@ -165,7 +164,10 @@ class NEobject(ClassOperation):
         """
         self._fparam = params.pop('F')
         self._ne0 = params.pop('e_density')
-        self._func = partial(func, **params)
+        try:
+            self._func = func(**params)
+        except TypeError:
+            self._func = partial(func, **params)
         self._params = params
 
     def DM(self, xyz, xyz_sun=np.array([0, 8.5, 0]),
@@ -254,7 +256,7 @@ class Clumps(NEobject):
     def use_clump(self):
         """
         """
-        return self._data['flag'] == 0
+        return np.array(self._data['flag']) == 0
 
     @lzproperty
     def xyz(self):
@@ -267,35 +269,42 @@ class Clumps(NEobject):
         """
         Galactic longitude (deg)
         """
-        return self._data['l']
+        return np.array(self._data['l'])
 
     @lzproperty
     def gb(self):
         """
         Galactic latitude (deg)
         """
-        return self._data['b']
+        return np.array(self._data['b'])
 
     @lzproperty
     def distance(self):
         """
         Distance from the sun (kpc)
         """
-        return self._data['dc']
+        return np.array(self._data['dc'])
 
     @lzproperty
     def radius2(self):
         """
         Radius of the clump (kpc)
         """
-        return self._data['rc']**2
+        return np.array(self._data['rc']**2)
 
     @lzproperty
     def ne0(self):
         """
         Electron density of each clump (cm^{-3})
         """
-        return self._data['nec']
+        return np.array(self._data['nec'])
+
+    @lzproperty
+    def ne0_use(self):
+        """
+        Electron density of each clump (cm^{-3})
+        """
+        return self.ne0*self.use_clump
 
     @lzproperty
     def edge(self):
@@ -304,7 +313,7 @@ class Clumps(NEobject):
         0 => use exponential rolloff out to 5 clump radii
         1 => uniform and truncated at 1/e clump radius
         """
-        return self._data['edge']
+        return np.array(self._data['edge'])
 
     def get_xyz(self, rsun=8.5):
         """
@@ -344,7 +353,7 @@ class Clumps(NEobject):
         The contribution of the clumps to the free
         electron density at x, y, z = `xyz`
         """
-        return np.sum(self.clump_factor(xyz)*self.ne0*self.use_clump, axis=-1)
+        return np.sum(self.clump_factor(xyz)*self.ne0_use, axis=-1)
 
 
 class Voids(NEobject):
@@ -363,7 +372,7 @@ class Voids(NEobject):
     def use_void(self):
         """
         """
-        return self._data['flag'] == 0
+        return np.array(self._data['flag'] == 0)
 
     @lzproperty
     def xyz(self):
@@ -383,21 +392,21 @@ class Voids(NEobject):
         """
         Galactic longitude (deg)
         """
-        return self._data['l']
+        return np.array(self._data['l'])
 
     @lzproperty
     def gb(self):
         """
         Galactic latitude (deg)
         """
-        return self._data['b']
+        return np.array(self._data['b'])
 
     @lzproperty
     def distance(self):
         """
         Distance from the sun (kpc)
         """
-        return self._data['dv']
+        return np.array(self._data['dv'])
 
     @lzproperty
     def ellipsoid_abc(self):
@@ -426,7 +435,14 @@ class Voids(NEobject):
         """
         Electron density of each void (cm^{-3})
         """
-        return self._data['nev']
+        return np.array(self._data['nev'])
+
+    @lzproperty
+    def ne0_use(self):
+        """
+        Electron density of each void (cm^{-3})
+        """
+        return self.ne0*self.use_void
 
     @lzproperty
     def edge(self):
@@ -435,7 +451,7 @@ class Voids(NEobject):
         0 => use exponential rolloff out to 5 clump radii
         1 => uniform and truncated at 1/e clump radius
         """
-        return self._data['edge']
+        return np.array(self._data['edge'])
 
     def get_xyz(self, rsun=8.5):
         """
@@ -460,14 +476,14 @@ class Voids(NEobject):
         q2 = np.sum(xyz**2, axis=1).T
         # NOTE: In the original NE2001 code q2 <= 5 is used instead of q <= 5.
         # TODO: check this
-        return (q2 <= 1)*(self.edge == 1) + (q2 <= 5)*(self.edge == 0)*exp(-q2)
+        return (q2 <= 1)*self.edge + (q2 <= 5)*(1-self.edge)*exp(-q2)
 
     def electron_density(self, xyz):
         """
         The contribution of the clumps to the free
         electron density at x, y, z = `xyz`
         """
-        return np.sum(self.void_factor(xyz)*self.ne0*self.use_void, axis=-1)
+        return np.sum(self.void_factor(xyz)*self.ne0_use, axis=-1)
 
 
 class ElectronDensity(NEobject):
@@ -498,23 +514,39 @@ class ElectronDensity(NEobject):
         return self._combined.ne(xyz)
 
 
-def in_ellipsoid(xyz, center, ellipsoid, theta):
+class Ellipsoid(object):
     """
-    Test if xyz in the ellipsoid
-    Theta in radians
     """
-    try:
-        xyz = xyz - center
-    except ValueError:
-        xyz = xyz - center[:, None]
-        ellipsoid = ellipsoid[:, None]
 
-    rot = rotation(theta, -1)
-    xyz = rot.dot(xyz)
+    def __init__(self, center, ellipsoid, theta):
+        """
+        """
+        self.center = center
+        self.ellipsoid = ellipsoid
+        self.theta = theta
 
-    xyz_p = xyz/ellipsoid
+    @lzproperty
+    def transform(self):
+        "Rotation and rescaling matrix"
+        return (rotation(self.theta, -1).T/self.ellipsoid).T
 
-    return np.sum(xyz_p**2, axis=0) <= 1
+    def in_ellipsoid(self, xyz):
+        """
+        Test if xyz in the ellipsoid
+        Theta in radians
+        """
+        try:
+            xyz = xyz - self.center
+        except ValueError:
+            xyz = xyz - self.center[:, None]
+
+        xyz = self.transform.dot(xyz)
+
+        return np.sum(xyz**2, axis=0) <= 1
+
+
+def in_ellipsoid(center, ellipsoid, theta):
+    return Ellipsoid(center, ellipsoid, theta).in_ellipsoid
 
 
 def in_cylinder(xyz, center, cylinder, theta):
@@ -552,7 +584,6 @@ def in_half_sphere(xyz, center, radius):
     return (distance <= radius)*(xyz0[-1] >= 0)
 
 
-@jit
 def clump_factor(xyz, xyz0, r2, edge):
     """
     Clump edge

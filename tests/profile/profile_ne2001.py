@@ -1,8 +1,8 @@
 
-import os
-import time
 import cProfile
+import os
 import pstats
+import time
 
 import numpy as np
 from click.testing import CliRunner

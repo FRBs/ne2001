@@ -42,8 +42,8 @@ def test_geometry():
     xyz = (1-2*rand(3, 100)) * 20
     theta = rand()*2*np.pi
     center = rand(3)*20
-    assert density.in_ellipsoid(center, center, ellipsoid, theta)
-    assert len(density.in_ellipsoid(xyz, center, ellipsoid, theta)) == 100
+    assert density.in_ellipsoid(center, ellipsoid, theta)(center)
+    assert len(density.in_ellipsoid(center, ellipsoid, theta)(xyz)) == 100
 
     cylinder = rand(3)*20
     xyz = (1-2*rand(3, 100)) * 20
