@@ -1,4 +1,5 @@
 "Free electron density model"
+from __future__ import division
 import os
 from functools import partial
 

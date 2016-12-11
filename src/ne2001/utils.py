@@ -1,4 +1,5 @@
 "Some utility methods"
+from __future__ import division
 import numpy as np
 from numpy import cos
 from numpy import pi
