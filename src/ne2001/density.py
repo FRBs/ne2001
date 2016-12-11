@@ -173,13 +173,13 @@ class NEobject(ClassOperation):
             self._func = partial(func, **params)
         self._params = params
 
-    def DM(self, xyz, xyz_sun=np.array([0, 8.5, 0]),
+    def DM(self, l, b, d, xyz_sun=np.array([0, 8.5, 0]),
            epsrel=1e-4, epsabs=1e-6, integrator=quad, step_size=0.001,
            *arg, **kwargs):
         """
         Calculate the dispersion measure at location `xyz`
         """
-        xyz = xyz - xyz_sun
+        xyz = galactic_to_galactocentric(l, b, d, 0)
 
         dfinal = sqrt(np.sum(xyz**2, axis=0))
         if integrator.__name__ is 'quad':
@@ -188,12 +188,12 @@ class NEobject(ClassOperation):
                               **kwargs)[0]*dfinal*1000
         else:   # Assuming sapling integrator
             nsamp = max(1000, dfinal/step_size)
-            x = np.linspace(0, 1, nsamp)
-            xyz = xyz_sun[:, None] + x*xyz[:, None]
+            x = np.linspace(0, 1, nsamp + 1)
+            xyz = galactic_to_galactocentric(l, b, x*dfinal, xyz_sun[1])
             ne = self.ne(xyz)
-            return integrator(ne)*dfinal*1000/nsamp
+            return integrator(ne)*dfinal*1000*x[1]
 
-    def dist(self, l, b, DM, rsun=8.5, step_size=0.0001):
+    def dist(self, l, b, DM, r_sun=8.5, step_size=0.001):
         """
         Estimate the distance to an object with dispersion measure `DM`
         located at the direction `l ,b'
@@ -202,17 +202,14 @@ class NEobject(ClassOperation):
         # Initial guess
         dist0 = DM/PARAMS['thick_disk']['e_density']/1000
 
-        while self.DM(galactic_to_galactocentric(l, b, dist0, rsun)) < DM:
+        while self.DM(l, b, dist0) < DM:
             dist0 *= 2
 
         nsamp = max(1000, dist0/step_size)
-        d_samp = np.linspace(0, dist0, nsamp)
-        step_size = np.diff(d_samp[:2])
-        ne_samp = self.ne(galactic_to_galactocentric(l, b, d_samp, rsun))
-        d_samp = (d_samp[1:] + d_samp[:-1])/2
-        dm_samp = cumtrapz(ne_samp)*1000*step_size
-        dist = np.interp(DM, dm_samp, d_samp)
-        return dist
+        d_samp = np.linspace(0, dist0, nsamp + 1)
+        ne_samp = self.ne(galactic_to_galactocentric(l, b, d_samp, r_sun))
+        dm_samp = cumtrapz(ne_samp, dx=d_samp[1])*1000
+        return np.interp(DM, dm_samp, d_samp[1:])
 
     def ne(self, *args):
         return self.electron_density(*args)

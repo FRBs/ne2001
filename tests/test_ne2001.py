@@ -89,10 +89,9 @@ def test_void():
 
     ix = ne_voids.argmax()
     assert ne_voids[ix] == voids.ne(xyz[:, ix])
-
-    xyz = np.array([-3.4153607E-02,   7.521969,      0.2080137])
+    l, b, d = -2, 12, 1
     DM = 0.9308054
-    assert abs(voids.DM(xyz) - DM)/DM < tol
+    assert abs(voids.DM(l, b, d) - DM)/DM < tol
 
 
 def test_local_ism():
@@ -102,52 +101,56 @@ def test_local_ism():
 
     assert all(local_ism.ne(xyz) >= 0)
     assert len(local_ism.ne(xyz)) == 100
-    assert (abs(local_ism.DM(np.array([-3.4136981E-02, 7.522445, 0.2079124])) -
-                2.453550)/2.453550 < tol)
+    l, b, d = -2, 12, 1
+    DM = 2.453550
+    assert (abs(local_ism.DM(l, b, d) -
+                DM)/DM < tol)
 
 def test_DM():
     tol = 1e-3
     d1 = density.NEobject(density.thick_disk, r_sun=8.5,
                           **PARAMS['thick_disk'])
     xyz = np.array([0.1503843, 7.647129, 0.5000018])
+    l, b, d = 10, 30, 1
     DM = 32.36372
-    assert abs(d1.DM(xyz) - DM) / DM  < tol
+    assert abs(d1.DM(l, b, d) - DM) / DM  < tol
 
 
     d2 = density.NEobject(density.thin_disk,
                           **PARAMS['thin_disk'])
 
-    np.array([0.1503843, 7.647129, 0.5000018])
-    DM = 32.36372
-
-    xyz = np.array([0.1503843, 7.647129, 0.5000018])
+    
+    l, b, d = 10, 30, 1
     DM = 0.046937
-    assert abs(d2.DM(xyz) - DM) / DM  < tol
+    assert abs(d2.DM(l, b, d) - DM) / DM  < tol
 
 
 def test_electron_density_quad():
     tol = 1e-3
     ne = density.ElectronDensity(**PARAMS)
-    xyz = np.array([-3.4153607E-02,   7.521969,      0.2080137])
+    l, b, d = -2, 12, 1
     DM = 23.98557
-    assert abs(ne.DM(xyz) - DM)/DM < tol
+    assert abs(ne.DM(l, b, d) - DM)/DM < tol
 
 
 def test_electron_density_trapz():
     tol = 1e-3
     ne = density.ElectronDensity(**PARAMS)
-    xyz = np.array([-3.4153607E-02,   7.521969,      0.2080137])
+    l, b, d = -2, 12, 1
     DM = 23.98557
-    assert abs(ne.DM(xyz, integrator=integrate.trapz) - DM)/DM < tol
+    assert abs(ne.DM(l, b, d, integrator=integrate.trapz) - DM)/DM < tol
 
 
 def test_dist():
     for i in range(10):
-        tol = 1e-3
+        tol = 0.1
         ne = density.ElectronDensity(**PARAMS)
-        l = rand()*2*np.pi
-        b = np.arccos(1 - 2*rand())
-        d = rand()*10
+        l = rand()*360
+        b = np.arccos(1 - 2*rand())/np.pi*180
+        d = rand()*5
         rsun = 8.5
-        DM = ne.DM(utils.galactic_to_galactocentric(l, b, d, rsun))
-        assert abs(ne.dist(l, b, DM, rsun) - d)/d < tol, (l, b, d)
+        DM = ne.DM(l, b, d)
+        d_DM = ne.dist(l, b, DM)
+        err = abs(d_DM - d)/d
+        print(err, l, b, d, d_DM)
+        assert err < tol, (l, b, d)
