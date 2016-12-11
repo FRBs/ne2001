@@ -45,9 +45,9 @@ Overview
     :target: https://www.codacy.com/app/benbaror/ne2001
     :alt: Codacy Code Quality Status
 
-.. |codeclimate| image:: https://codeclimate.com/github/benbaror/ne2001/badges/gpa.svg
+.. |codeclimate| image:: https://codeclimate.com/github/benbaror/ne2001/badges/gpa.svg?style=flat
    :target: https://codeclimate.com/github/benbaror/ne2001
-   :alt: CodeClimate Quality Status
+   :alt: Code Climate
 
 .. |scrutinizer| image:: https://img.shields.io/scrutinizer/g/benbaror/ne2001/master.svg?style=flat
     :alt: Scrutinizer Status
