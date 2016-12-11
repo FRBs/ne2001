@@ -86,13 +86,13 @@ def rotation(theta, axis=-1):
                          [0, 0, 1]])
 
 
-def galactic_to_galactocentric(l, b, distance, rsun):
+def galactic_to_galactocentric(l, b, distance, xyz_sun=[0, 8.5, 0]):
     slc = sin(l/180*pi)
     clc = cos(l/180*pi)
     sbc = sin(b/180*pi)
     cbc = cos(b/180*pi)
     rgalc = distance*cbc
-    xc = rgalc*slc
-    yc = rsun-rgalc*clc
-    zc = distance*sbc
+    xc = xyz_sun[0] + rgalc*slc
+    yc = xyz_sun[1] - rgalc*clc
+    zc = xyz_sun[-1] + distance*sbc
     return np.array([xc, yc, zc])

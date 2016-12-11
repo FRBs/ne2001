@@ -104,16 +104,18 @@ PARAMS = {
     'loop_out': {'center': np.array([-0.045, 8.40, 0.07]),
                  'radius': 0.120 + 0.060,
                  'e_density': 0.0125,
-                 'F': 0.01}}
+                 'F': 0.01},
+
+    'sun_location': [0, 8.5, 0]}
 
 
-def thick_disk(xyz, r_sun, radius, height):
+def thick_disk(xyz, rsun, radius, height):
     """
     Calculate the contribution of the thick disk to the free electron density
      at x, y, z = `xyz`
     """
     r_ratio = sqrt(xyz[0]**2 + xyz[1]**2)/radius
-    return (cos(r_ratio*pi/2)/cos(r_sun*pi/2/radius) /
+    return (cos(r_ratio*pi/2)/cos(rsun*pi/2/radius) /
             cosh(xyz[-1]/height)**2 *
             (r_ratio < 1))
 
@@ -173,13 +175,13 @@ class NEobject(ClassOperation):
             self._func = partial(func, **params)
         self._params = params
 
-    def DM(self, l, b, d, xyz_sun=np.array([0, 8.5, 0]),
+    def DM(self, l, b, d, xyz_sun=PARAMS['sun_location'],
            epsrel=1e-4, epsabs=1e-6, integrator=quad, step_size=0.001,
            *arg, **kwargs):
         """
         Calculate the dispersion measure at location `xyz`
         """
-        xyz = galactic_to_galactocentric(l, b, d, 0)
+        xyz = galactic_to_galactocentric(l, b, d, [0, 0, 0])
 
         dfinal = sqrt(np.sum(xyz**2, axis=0))
         if integrator.__name__ is 'quad':
@@ -189,11 +191,11 @@ class NEobject(ClassOperation):
         else:   # Assuming sapling integrator
             nsamp = max(1000, dfinal/step_size)
             x = np.linspace(0, 1, nsamp + 1)
-            xyz = galactic_to_galactocentric(l, b, x*dfinal, xyz_sun[1])
+            xyz = galactic_to_galactocentric(l, b, x*dfinal, xyz_sun)
             ne = self.ne(xyz)
             return integrator(ne)*dfinal*1000*x[1]
 
-    def dist(self, l, b, DM, r_sun=8.5, step_size=0.001):
+    def dist(self, l, b, DM, xyz_sun=PARAMS['sun_location'], step_size=0.001):
         """
         Estimate the distance to an object with dispersion measure `DM`
         located at the direction `l ,b'
@@ -207,7 +209,7 @@ class NEobject(ClassOperation):
 
         nsamp = max(1000, dist0/step_size)
         d_samp = np.linspace(0, dist0, nsamp + 1)
-        ne_samp = self.ne(galactic_to_galactocentric(l, b, d_samp, r_sun))
+        ne_samp = self.ne(galactic_to_galactocentric(l, b, d_samp, xyz_sun=xyz_sun))
         dm_samp = cumtrapz(ne_samp, dx=d_samp[1])*1000
         return np.interp(DM, dm_samp, d_samp[1:])
 
@@ -343,7 +345,7 @@ class Clumps(NEobject):
         """
         return np.array(self._data['edge'])
 
-    def get_xyz(self, rsun=8.5):
+    def get_xyz(self, xyz_sun=PARAMS['sun_location']):
         """
         """
         # xyz = SkyCoord(frame="galactic", l=self.gl, b=self.gb,
@@ -353,7 +355,7 @@ class Clumps(NEobject):
         #                                      cartesian.xyz.value
         # return xyz
         return galactic_to_galactocentric(l=self.gl, b=self.gb,
-                                          distance=self.distance, rsun=rsun)
+                                          distance=self.distance, xyz_sun=xyz_sun)
 
     def clump_factor(self, xyz):
         """
@@ -481,7 +483,7 @@ class Voids(NEobject):
         """
         return np.array(self._data['edge'])
 
-    def get_xyz(self, rsun=8.5):
+    def get_xyz(self, xyz_sun=PARAMS['sun_location']):
         """
         """
         # xyz = SkyCoord(frame="galactic", l=self.gl, b=self.gb,
@@ -491,7 +493,7 @@ class Voids(NEobject):
         #                cartesian.xyz.value
         # return xyz
         return galactic_to_galactocentric(l=self.gl, b=self.gb,
-                                          distance=self.distance, rsun=rsun)
+                                          distance=self.distance, xyz_sun=xyz_sun)
 
     def void_factor(self, xyz):
         """
@@ -519,12 +521,12 @@ class ElectronDensity(NEobject):
     A class holding all the elements which contribute to free electron density
     """
 
-    def __init__(self, r_sun=8.5, clumps_file=None, voids_file=None,
+    def __init__(self, rsun=PARAMS['sun_location'][1], clumps_file=None, voids_file=None,
                  **params):
         """
         """
         self._params = params
-        self._thick_disk = NEobject(thick_disk, r_sun=r_sun,
+        self._thick_disk = NEobject(thick_disk, rsun=rsun,
                                     **params['thick_disk'])
         self._thin_disk = NEobject(thin_disk, **params['thin_disk'])
         self._galactic_center = NEobject(gc, **params['galactic_center'])
