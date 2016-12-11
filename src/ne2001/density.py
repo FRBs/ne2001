@@ -1,7 +1,9 @@
 "Free electron density model"
 from __future__ import division
 import os
+from builtins import super
 from functools import partial
+
 
 import numpy as np
 from astropy.table import Table
@@ -209,12 +211,14 @@ class NEobject(ClassOperation):
 
         nsamp = max(1000, dist0/step_size)
         d_samp = np.linspace(0, dist0, nsamp + 1)
-        ne_samp = self.ne(galactic_to_galactocentric(l, b, d_samp, xyz_sun=xyz_sun))
+        ne_samp = self.ne(galactic_to_galactocentric(l, b, d_samp,
+                                                     xyz_sun=xyz_sun))
         dm_samp = cumtrapz(ne_samp, dx=d_samp[1])*1000
         return np.interp(DM, dm_samp, d_samp[1:])
 
-    def ne(self, *args):
-        return self.electron_density(*args)
+    def ne(self, xyz):
+        "Electron density at the location `xyz`"
+        return self.electron_density(xyz)
 
     def electron_density(self, xyz):
         "Electron density at the location `xyz`"
@@ -270,27 +274,27 @@ class LocalISM(NEobject):
         return self._lism.ne(xyz)
 
 
-class Clumps(NEobject):
+class NEobjects(NEobject):
     """
+    Read objects from file
     """
 
-    def __init__(self, clumps_file=None):
+    def __init__(self, objects_file):
         """
         """
-        if not clumps_file:
-            this_dir, _ = os.path.split(__file__)
-            clumps_file = os.path.join(this_dir, "data", "neclumpN.NE2001.dat")
-        self._data = Table.read(clumps_file, format='ascii')
+        self._data = Table.read(objects_file, format='ascii')
 
     @lzproperty
-    def use_clump(self):
+    def use_flag(self):
         """
+        A list of flags which determine which objects to use
         """
         return np.array(self._data['flag']) == 0
 
     @lzproperty
     def xyz(self):
         """
+        The locations of the objects in Galactocentric coordinates (kpc)
         """
         return self.get_xyz()
 
@@ -313,33 +317,39 @@ class Clumps(NEobject):
         """
         Distance from the sun (kpc)
         """
-        return np.array(self._data['dc'])
+        return np.array(self._data['dist'])
 
     @lzproperty
-    def radius2(self):
+    def _radius2(self):
         """
-        Radius of the clump (kpc)
+        Radius^2 of each object (kpc)
         """
-        return np.array(self._data['rc']**2)
+        return self.radius**2
+
+    @lzproperty
+    def radius(self):
+        """
+        Radius of each object (kpc)
+        """
+        return np.array(self._data['radius'])
 
     @lzproperty
     def ne0(self):
         """
-        Electron density of each clump (cm^{-3})
+        Electron density of each object (cm^{-3})
         """
-        return np.array(self._data['nec'])
+        return np.array(self._data['ne'])
 
     @lzproperty
-    def ne0_use(self):
+    def _ne0_use(self):
         """
-        Electron density of each clump (cm^{-3})
         """
-        return self.ne0*self.use_clump
+        return self.ne0*self.use_flag
 
     @lzproperty
     def edge(self):
         """
-        Clump edge
+        The edge of the object
         0 => use exponential rolloff out to 5 clump radii
         1 => uniform and truncated at 1/e clump radius
         """
@@ -347,6 +357,7 @@ class Clumps(NEobject):
 
     def get_xyz(self, xyz_sun=PARAMS['sun_location']):
         """
+        Get the location in Galactocentric coordinates
         """
         # xyz = SkyCoord(frame="galactic", l=self.gl, b=self.gb,
         #                distance=self.distance,
@@ -355,21 +366,19 @@ class Clumps(NEobject):
         #                                      cartesian.xyz.value
         # return xyz
         return galactic_to_galactocentric(l=self.gl, b=self.gb,
-                                          distance=self.distance, xyz_sun=xyz_sun)
+                                          distance=self.distance,
+                                          xyz_sun=xyz_sun)
 
-    def clump_factor(self, xyz):
+    def _factor(self, xyz):
         """
-        Clump edge
-        0 => use exponential rolloff out to 5 clump radii
-        1 => uniform and truncated at 1/e clump radius
         """
         if xyz.ndim == 1:
-            return clump_factor(xyz, self.xyz, self.radius2, self.edge)
+            return object_factor(xyz, self.xyz, self._radius2, self.edge)
         else:
             xyz = xyz[:, :, None] - self.xyz[:, None, :]
 
         q2 = (np.sum(xyz**2, axis=0) /
-              self.radius2)
+              self._radius2)
         # NOTE: In the original NE2001 code q2 <= 5 is used instead of q <= 5.
         # TODO: check this
         q5 = (q2 <= 5)*(self.edge == 0)
@@ -380,13 +389,26 @@ class Clumps(NEobject):
 
     def electron_density(self, xyz):
         """
-        The contribution of the clumps to the free
+        The contribution of the object to the free
         electron density at x, y, z = `xyz`
         """
-        return np.sum(self.clump_factor(xyz)*self.ne0_use, axis=-1)
+        return np.sum(self._factor(xyz)*self._ne0_use, axis=-1)
 
 
-class Voids(NEobject):
+class Clumps(NEobjects):
+    """
+    """
+
+    def __init__(self, clumps_file=None):
+        """
+        """
+        if not clumps_file:
+            this_dir, _ = os.path.split(__file__)
+            clumps_file = os.path.join(this_dir, "data", "neclumpN.NE2001.dat")
+        super().__init__(clumps_file)
+
+
+class Voids(NEobjects):
     """
     """
 
@@ -396,56 +418,30 @@ class Voids(NEobject):
         if not voids_file:
             this_dir, _ = os.path.split(__file__)
             voids_file = os.path.join(this_dir, "data", "nevoidN.NE2001.dat")
-        self._data = Table.read(voids_file, format='ascii')
-
-    @lzproperty
-    def use_void(self):
-        """
-        """
-        return np.array(self._data['flag'] == 0)
-
-    @lzproperty
-    def xyz(self):
-        """
-        """
-        return self.get_xyz()
+        super().__init__(voids_file)
 
     @lzproperty
     def xyz_rot(self):
         """
+        Rotated xyz
         """
         return np.array([R.dot(xyzi) for R,
                          xyzi in zip(self.rotation, self.xyz.T)]).T
-
-    @lzproperty
-    def gl(self):
-        """
-        Galactic longitude (deg)
-        """
-        return np.array(self._data['l'])
-
-    @lzproperty
-    def gb(self):
-        """
-        Galactic latitude (deg)
-        """
-        return np.array(self._data['b'])
-
-    @lzproperty
-    def distance(self):
-        """
-        Distance from the sun (kpc)
-        """
-        return np.array(self._data['dv'])
 
     @lzproperty
     def ellipsoid_abc(self):
         """
         Void axis
         """
-        return np.array([self._data['aav'],
-                         self._data['bbv'],
-                         self._data['ccv']])
+        return np.array([self._data['aa'],
+                         self._data['bb'],
+                         self._data['cc']])
+
+    @property
+    def radius(self):
+        """
+        """
+        return 1
 
     @lzproperty
     def rotation(self):
@@ -456,64 +452,27 @@ class Voids(NEobject):
             (rotation(thetaz*pi/180, -1).dot(
                 rotation(thetay*pi/180, 1)).T/abc).T
             for thetaz, thetay, abc
-            in zip(self._data['thvz'], self._data['thvy'],
+            in zip(self._data['theta_z'], self._data['theta_y'],
                    self.ellipsoid_abc.T)
         ])
 
-    @lzproperty
-    def ne0(self):
-        """
-        Electron density of each void (cm^{-3})
-        """
-        return np.array(self._data['nev'])
-
-    @lzproperty
-    def ne0_use(self):
-        """
-        Electron density of each void (cm^{-3})
-        """
-        return self.ne0*self.use_void
-
-    @lzproperty
-    def edge(self):
-        """
-        Void edge
-        0 => use exponential rolloff out to 5 clump radii
-        1 => uniform and truncated at 1/e clump radius
-        """
-        return np.array(self._data['edge'])
-
-    def get_xyz(self, xyz_sun=PARAMS['sun_location']):
-        """
-        """
-        # xyz = SkyCoord(frame="galactic", l=self.gl, b=self.gb,
-        #                distance=self.distance,
-        #                z_sun = z_sun*us.kpc,
-        #                unit="deg, deg, kpc").galactocentric.
-        #                cartesian.xyz.value
-        # return xyz
-        return galactic_to_galactocentric(l=self.gl, b=self.gb,
-                                          distance=self.distance, xyz_sun=xyz_sun)
-
-    def void_factor(self, xyz):
+    def _factor(self, xyz):
         """
         Clump edge
         0 => use exponential rolloff out to 5 clump radii
         1 => uniform and truncated at 1/e clump radius
         """
-        xyz = (self.rotation.dot(xyz).T - self.xyz_rot).T
+        if xyz.ndim == 1:
+            return object_factor(self.rotation.dot(xyz), self.xyz_rot,
+                                 self._radius2, self.edge)
+        else:
+            xyz = (self.rotation.dot(xyz).T - self.xyz_rot).T
 
-        q2 = np.sum(xyz**2, axis=1).T
-        # NOTE: In the original NE2001 code q2 <= 5 is used instead of q <= 5.
-        # TODO: check this
-        return (q2 <= 1)*self.edge + (q2 <= 5)*(1-self.edge)*exp(-q2)
-
-    def electron_density(self, xyz):
-        """
-        The contribution of the clumps to the free
-        electron density at x, y, z = `xyz`
-        """
-        return np.sum(self.void_factor(xyz)*self.ne0_use, axis=-1)
+            q2 = np.sum(xyz**2, axis=1).T
+            # NOTE: In the original NE2001 code q2 <= 5
+            # is used instead of q <= 5.
+            # TODO: check thisif xyz.ndim == 1:
+            return (q2 <= 1)*self.edge + (q2 <= 5)*(1-self.edge)*exp(-q2)
 
 
 class ElectronDensity(NEobject):
@@ -614,9 +573,9 @@ def in_half_sphere(xyz, center, radius):
     return (distance <= radius)*(xyz0[-1] >= 0)
 
 
-def clump_factor(xyz, xyz0, r2, edge):
+def object_factor(xyz, xyz0, r2, edge):
     """
-    Clump edge
+    edge
     0 => use exponential rolloff out to 5 clump radii
     1 => uniform and truncated at 1/e clump radius
     """

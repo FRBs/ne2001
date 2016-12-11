@@ -1,4 +1,4 @@
-flag       l       b       nec     Fc     dc     rc   edge type name
+flag   l       b       ne      F    dist  radius  edge type name
 0  -175.640  -3.320   0.230   0.00  0.630  0.010    0    P 0540+23         
 0  -175.440  -5.780   0.030  70.00  0.640  0.010    0    P 0531+21         
 0  -171.210   2.400   1.310   0.00  0.650  0.010    0    P 0611+22         
