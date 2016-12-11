@@ -5,6 +5,7 @@ import numpy as np
 from click.testing import CliRunner
 from numpy.random import rand
 from numpy.random import randint
+from numpy.random import seed
 from scipy import integrate
 
 from ne2001 import density
@@ -119,7 +120,7 @@ def test_DM():
     d2 = density.NEobject(density.thin_disk,
                           **PARAMS['thin_disk'])
 
-    
+
     l, b, d = 10, 30, 1
     DM = 0.046937
     assert abs(d2.DM(l, b, d) - DM) / DM  < tol
@@ -142,6 +143,7 @@ def test_electron_density_trapz():
 
 
 def test_dist():
+    seed(123)
     for i in range(10):
         tol = 0.1
         ne = density.ElectronDensity(**PARAMS)
