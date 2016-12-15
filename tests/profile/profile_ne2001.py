@@ -12,10 +12,9 @@ from numpy.random import randint
 from ne2001 import density
 
 sys.path.append(os.path.dirname(os.path.realpath(__file__)) + '/../../src/')
-print(sys.path)
 
 PARAMS = density.PARAMS
-r_sun = 8.5
+density.set_xyz_sun(np.array([0, 8.5, 0]))
 
 
 if __name__ == '__main__':

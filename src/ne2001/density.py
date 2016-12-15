@@ -108,8 +108,24 @@ PARAMS = {
                  'e_density': 0.0125,
                  'F': 0.01}}
 
+
+def rad3d2(xyz):
+    return xyz[0]**2 + xyz[1]**2 + xyz[-1]**2
+
+
+def rad2d2(xyz):
+    return xyz[0]**2 + xyz[1]**2
+
+
+def matmul(a, b):
+    try:
+        return a.__matmul__(b)
+    except AttributeError:
+        return np.matmul(a, b)
+
+
 XYZ_SUN = np.array([0, 8.5, 0])
-RSUN = sqrt(XYZ_SUN[0]**2 + XYZ_SUN[1]**2)
+RSUN = sqrt(rad2d2(XYZ_SUN))
 
 
 def set_xyz_sun(xyz_sun):
@@ -117,7 +133,7 @@ def set_xyz_sun(xyz_sun):
     global RSUN
 
     XYZ_SUN = xyz_sun
-    RSUN = sqrt(XYZ_SUN[0]**2 + XYZ_SUN[1]**2)
+    RSUN = sqrt(rad2d2(XYZ_SUN))
 
 
 def thick_disk(xyz, radius, height):
@@ -125,7 +141,7 @@ def thick_disk(xyz, radius, height):
     Calculate the contribution of the thick disk to the free electron density
      at x, y, z = `xyz`
     """
-    r_ratio = sqrt(xyz[0]**2 + xyz[1]**2)/radius
+    r_ratio = sqrt(rad2d2(xyz))/radius
     return (cos(r_ratio*pi/2)/cos(RSUN*pi/2/radius) /
             cosh(xyz[-1]/height)**2 *
             (r_ratio < 1))
@@ -136,8 +152,8 @@ def thin_disk(xyz, radius, height):
     Calculate the contribution of the thin disk to the free electron density
      at x, y, z = `xyz`
     """
-    r_ratio = sqrt(xyz[0]**2 + xyz[1]**2)/radius
-    return (exp(-(1 - r_ratio)**2*radius**2/1.8**2) /
+    rad2 = sqrt(rad2d2(xyz))
+    return (exp(-(radius - rad2)**2/1.8**2) /
             cosh(xyz[-1]/height)**2)  # Why 1.8?
 
 
@@ -153,7 +169,7 @@ def gc(xyz, center, radius, height):
     except ValueError:
         xyz = xyz - center[:, None]
 
-    r_ratio = sqrt(xyz[0]**2 + xyz[1]**2)/radius
+    r_ratio2 = rad2d2(xyz)/radius**2
 
     # ????
     # Cordes and Lazio 2011 (0207156v3) (Table 2)
@@ -161,7 +177,7 @@ def gc(xyz, center, radius, height):
     # ????
 
     # Constant ne (form NE2001 code)
-    return (r_ratio**2 + (xyz[-1]/height)**2 < 1)*(r_ratio <= 1)
+    return (r_ratio2 + (xyz[-1]/height)**2 < 1)*(r_ratio2 <= 1)
 
 
 class NEobject(object):
@@ -200,7 +216,7 @@ class NEobject(object):
         """
         xyz = galactic_to_galactocentric(l, b, d, [0, 0, 0])
 
-        dfinal = sqrt(np.sum(xyz**2, axis=0))
+        dfinal = sqrt(rad3d2(xyz))
         if integrator.__name__ is 'quad':
             return integrator(lambda x: self.ne(XYZ_SUN + x*xyz),
                               0, 1, *arg, epsrel=epsrel, epsabs=epsabs,
@@ -328,6 +344,10 @@ class NEobjects(NEobject):
         """
         return self.get_xyz()
 
+    @property
+    def data(self):
+        return self._data[self.use_data]
+
     @lzproperty
     def gl(self):
         """
@@ -371,12 +391,6 @@ class NEobjects(NEobject):
         return np.array(self._data['ne'])
 
     @lzproperty
-    def _ne0_use(self):
-        """
-        """
-        return self.ne0*self.use_flag
-
-    @lzproperty
     def edge(self):
         """
         The edge of the object
@@ -407,8 +421,7 @@ class NEobjects(NEobject):
         else:
             xyz = xyz[:, :, None] - self.xyz[:, None, :]
 
-        q2 = (np.sum(xyz**2, axis=0) /
-              self._radius2)
+        q2 = rad3d2(xyz) / self._radius2
         # NOTE: In the original NE2001 code q2 <= 5 is used instead of q <= 5.
         # TODO: check this
         q5 = (q2 <= 5)*(self.edge == 0)
@@ -422,7 +435,7 @@ class NEobjects(NEobject):
         The contribution of the object to the free
         electron density at x, y, z = `xyz`
         """
-        return np.sum(self._factor(xyz)*self._ne0_use, axis=-1)
+        return (self._factor(xyz)*self.ne0).sum(axis=-1)
 
 
 class Clumps(NEobjects):
@@ -493,7 +506,8 @@ class Voids(NEobjects):
         1 => uniform and truncated at 1/e clump radius
         """
         if xyz.ndim == 1:
-            return object_factor(self.rotation.dot(xyz), self.xyz_rot,
+            return object_factor(matmul(self.rotation, xyz),
+                                 self.xyz_rot,
                                  self._radius2, self.edge)
         else:
             xyz = (self.rotation.dot(xyz).T - self.xyz_rot).T
@@ -558,9 +572,9 @@ class Ellipsoid(object):
         except ValueError:
             xyz = xyz - self.center[:, None]
 
-        xyz = self.transform.dot(xyz)
+        xyz = matmul(self.transform, xyz)
 
-        return np.sum(xyz**2, axis=0) <= 1
+        return rad3d2(xyz) <= 1
 
 
 def in_ellipsoid(center, ellipsoid, theta):
@@ -572,15 +586,14 @@ def in_cylinder(xyz, center, cylinder, theta):
     Test if xyz in the cylinder
     Theta in radians
     """
-    xyz0 = xyz.copy()
+    xyz0 = xyz
     try:
         xyz = xyz - center
     except ValueError:
         xyz = xyz - center[:, None]
         cylinder = np.vstack([cylinder]*xyz.shape[-1]).T
     xyz[1] -= tan(theta)*xyz0[-1]
-
-    cylinder_p = cylinder.copy()
+    cylinder_p = cylinder
     z_c = (center[-1] - cylinder[-1])
     izz = (xyz0[-1] <= 0)*(xyz0[-1] >= z_c)
     cylinder_p[0] = (0.001 +
@@ -588,18 +601,18 @@ def in_cylinder(xyz, center, cylinder, theta):
                      (1 - xyz0[-1]/z_c))*izz + cylinder[0]*(~izz)
     xyz_p = xyz/cylinder_p
 
-    return (xyz_p[0]**2 + xyz_p[1]**2 <= 1) * (xyz_p[-1]**2 <= 1)
+    return (rad2d2(xyz_p) <= 1) * (xyz_p[-1]**2 <= 1)
 
 
 def in_half_sphere(xyz, center, radius):
     "Test if `xyz` in the sphere with radius r_sphere  centerd at `xyz_center`"
-    xyz0 = xyz.copy()
+    xyz0 = xyz
     try:
         xyz = xyz - center
     except ValueError:
         xyz = xyz - center[:, None]
-    distance = sqrt(np.sum(xyz**2, axis=0))
-    return (distance <= radius)*(xyz0[-1] >= 0)
+    distance2 = rad3d2(xyz)
+    return (distance2 <= radius**2)*(xyz0[-1] >= 0)
 
 
 def object_factor(xyz, xyz0, r2, edge):
@@ -609,12 +622,10 @@ def object_factor(xyz, xyz0, r2, edge):
     1 => uniform and truncated at 1/e clump radius
     """
     xyz = (xyz - xyz0.T).T
-
-    q2 = (xyz[0]**2 + xyz[1]**2 + xyz[2]**2) / r2
+    q2 = rad3d2(xyz) / r2
     # NOTE: In the original NE2001 code q2 <= 5 is used instead of q <= 5.
     # TODO: check this
     q5 = (q2 <= 5)*(edge == 0)
-    res = np.zeros_like(q2)
-    res[(q2 <= 1)*(edge == 1)] = 1
+    res = 1.0*(q2 <= 1)*(edge == 1)
     res[q5] = exp(-q2[q5])
     return res
