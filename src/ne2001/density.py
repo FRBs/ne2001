@@ -16,10 +16,10 @@ from numpy import tan
 from scipy.integrate import cumtrapz
 from scipy.integrate import quad
 
-from .utils import ClassOperation
 from .utils import galactic_to_galactocentric
 from .utils import lzproperty
 from .utils import rotation
+
 
 # import astropy.units as us
 # from astropy.coordinates import SkyCoord
@@ -155,7 +155,7 @@ def gc(xyz, center, radius, height):
     return (r_ratio**2 + (xyz[-1]/height)**2 < 1)*(r_ratio <= 1)
 
 
-class NEobject(ClassOperation):
+class NEobject(object):
     """
     A general electron density object
     """
@@ -176,6 +176,12 @@ class NEobject(ClassOperation):
         except TypeError:
             self._func = partial(func, **params)
         self._params = params
+
+    def __add__(self, other):
+        return Add(self, other)
+
+    def __or__(self, other):
+        return OR(self, other)
 
     def DM(self, l, b, d, xyz_sun=PARAMS['sun_location'],
            epsrel=1e-4, epsabs=1e-6, integrator=quad, step_size=0.001,
@@ -224,14 +230,12 @@ class NEobject(ClassOperation):
         "Electron density at the location `xyz`"
         return self._ne0*self._func(xyz)
 
-    @property
-    def F(self, xyz):
-        "Fluctuation parameter"
-        return (self.ne(xyz) > 0)*self._fparam
 
-
-class NEcombine(NEobject):
+class OR(NEobject):
     """
+    Return A or B where A and B are instance of
+    and the combined electron density is ne_A
+    for all ne_A > 0 and ne_B otherwise.
     """
 
     def __init__(self, object1, object2):
@@ -244,6 +248,24 @@ class NEcombine(NEobject):
         ne1 = self._object1.ne(*args)
         ne2 = self._object2.ne(*args)
         return ne1 + ne2*(ne1 <= 0)
+
+
+class Add(NEobject):
+    """
+    Return A + B where A and B are instance of
+    and the combined electron density is ne_A + ne_B.
+    """
+
+    def __init__(self, object1, object2):
+        """
+        """
+        self._object1 = object1
+        self._object2 = object2
+
+    def electron_density(self, *args):
+        ne1 = self._object1.ne(*args)
+        ne2 = self._object2.ne(*args)
+        return ne1 + ne2
 
 
 class LocalISM(NEobject):
@@ -261,10 +283,10 @@ class LocalISM(NEobject):
         self.loop_in = NEobject(in_half_sphere, **params['loop_in'])
         self.loop_out = NEobject(in_half_sphere, **params['loop_out'])
 
-        self.loop = NEcombine(self.loop_in, self.loop_out)
-        self._lism = NEcombine(self.lhb,
-                               NEcombine(self.loop,
-                                         NEcombine(self.lsb, self.ldr)))
+        self.loop = self.loop_in | self.loop_out
+        self._lism = (self.lhb |
+                      (self.loop |
+                       (self.lsb | self.ldr)))
 
     def electron_density(self, xyz):
         """
@@ -492,11 +514,11 @@ class ElectronDensity(NEobject):
         self._lism = LocalISM(**params)
         self._clumps = Clumps(clumps_file=clumps_file)
         self._voids = Voids(voids_file=voids_file)
-        self._combined = (NEcombine(self._voids,
-                                    NEcombine(self._lism,
-                                              self._thick_disk +
-                                              self._thin_disk +
-                                              self._galactic_center)) +
+        self._combined = ((self._voids |
+                          (self._lism |
+                           (self._thick_disk +
+                            self._thin_disk +
+                            self._galactic_center))) +
                           self._clumps)
 
     def electron_density(self, xyz):
