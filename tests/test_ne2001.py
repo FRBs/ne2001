@@ -13,7 +13,8 @@ from ne2001 import utils
 from ne2001.cli import main
 
 PARAMS = density.PARAMS
-rsun = 8.5
+density.set_xyz_sun(np.array([0, 8.5, 0]))
+
 
 def test_main():
     runner = CliRunner()
@@ -26,7 +27,7 @@ def test_main():
 def test_density():
     xyz = (1-2*rand(3, 100)) * 20
 
-    ne_disk1 = density.NEobject(density.thick_disk, rsun=rsun,
+    ne_disk1 = density.NEobject(density.thick_disk,
                                 **PARAMS['thick_disk']).ne(xyz)
     assert len(ne_disk1) == 100
     assert all(ne_disk1 >= 0)
@@ -109,8 +110,7 @@ def test_local_ism():
 
 def test_DM():
     tol = 1e-3
-    d1 = density.NEobject(density.thick_disk, rsun=8.5,
-                          **PARAMS['thick_disk'])
+    d1 = density.NEobject(density.thick_disk, **PARAMS['thick_disk'])
     xyz = np.array([0.1503843, 7.647129, 0.5000018])
     l, b, d = 10, 30, 1
     DM = 32.36372

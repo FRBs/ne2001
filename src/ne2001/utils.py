@@ -46,7 +46,7 @@ def rotation(theta, axis=-1):
                          [0, 0, 1]])
 
 
-def galactic_to_galactocentric(l, b, distance, xyz_sun=[0, 8.5, 0]):
+def galactic_to_galactocentric(l, b, distance, xyz_sun):
     slc = sin(l/180*pi)
     clc = cos(l/180*pi)
     sbc = sin(b/180*pi)

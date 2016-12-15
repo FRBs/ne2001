@@ -106,18 +106,27 @@ PARAMS = {
     'loop_out': {'center': np.array([-0.045, 8.40, 0.07]),
                  'radius': 0.120 + 0.060,
                  'e_density': 0.0125,
-                 'F': 0.01},
+                 'F': 0.01}}
 
-    'sun_location': [0, 8.5, 0]}
+XYZ_SUN = np.array([0, 8.5, 0])
+RSUN = sqrt(XYZ_SUN[0]**2 + XYZ_SUN[1]**2)
 
 
-def thick_disk(xyz, rsun, radius, height):
+def set_xyz_sun(xyz_sun):
+    global XYZ_SUN
+    global RSUN
+
+    XYZ_SUN = xyz_sun
+    RSUN = sqrt(XYZ_SUN[0]**2 + XYZ_SUN[1]**2)
+
+
+def thick_disk(xyz, radius, height):
     """
     Calculate the contribution of the thick disk to the free electron density
      at x, y, z = `xyz`
     """
     r_ratio = sqrt(xyz[0]**2 + xyz[1]**2)/radius
-    return (cos(r_ratio*pi/2)/cos(rsun*pi/2/radius) /
+    return (cos(r_ratio*pi/2)/cos(RSUN*pi/2/radius) /
             cosh(xyz[-1]/height)**2 *
             (r_ratio < 1))
 
@@ -183,7 +192,7 @@ class NEobject(object):
     def __or__(self, other):
         return OR(self, other)
 
-    def DM(self, l, b, d, xyz_sun=PARAMS['sun_location'],
+    def DM(self, l, b, d,
            epsrel=1e-4, epsabs=1e-6, integrator=quad, step_size=0.001,
            *arg, **kwargs):
         """
@@ -193,17 +202,17 @@ class NEobject(object):
 
         dfinal = sqrt(np.sum(xyz**2, axis=0))
         if integrator.__name__ is 'quad':
-            return integrator(lambda x: self.ne(xyz_sun + x*xyz),
+            return integrator(lambda x: self.ne(XYZ_SUN + x*xyz),
                               0, 1, *arg, epsrel=epsrel, epsabs=epsabs,
                               **kwargs)[0]*dfinal*1000
         else:   # Assuming sapling integrator
             nsamp = max(1000, dfinal/step_size)
             x = np.linspace(0, 1, nsamp + 1)
-            xyz = galactic_to_galactocentric(l, b, x*dfinal, xyz_sun)
+            xyz = galactic_to_galactocentric(l, b, x*dfinal, XYZ_SUN)
             ne = self.ne(xyz)
             return integrator(ne)*dfinal*1000*x[1]
 
-    def dist(self, l, b, DM, xyz_sun=PARAMS['sun_location'], step_size=0.001):
+    def dist(self, l, b, DM, step_size=0.001):
         """
         Estimate the distance to an object with dispersion measure `DM`
         located at the direction `l ,b'
@@ -217,8 +226,7 @@ class NEobject(object):
 
         nsamp = max(1000, dist0/step_size)
         d_samp = np.linspace(0, dist0, nsamp + 1)
-        ne_samp = self.ne(galactic_to_galactocentric(l, b, d_samp,
-                                                     xyz_sun=xyz_sun))
+        ne_samp = self.ne(galactic_to_galactocentric(l, b, d_samp, XYZ_SUN))
         dm_samp = cumtrapz(ne_samp, dx=d_samp[1])*1000
         return np.interp(DM, dm_samp, d_samp[1:])
 
@@ -377,7 +385,7 @@ class NEobjects(NEobject):
         """
         return np.array(self._data['edge'])
 
-    def get_xyz(self, xyz_sun=PARAMS['sun_location']):
+    def get_xyz(self):
         """
         Get the location in Galactocentric coordinates
         """
@@ -389,7 +397,7 @@ class NEobjects(NEobject):
         # return xyz
         return galactic_to_galactocentric(l=self.gl, b=self.gb,
                                           distance=self.distance,
-                                          xyz_sun=xyz_sun)
+                                          xyz_sun=XYZ_SUN)
 
     def _factor(self, xyz):
         """
@@ -502,13 +510,12 @@ class ElectronDensity(NEobject):
     A class holding all the elements which contribute to free electron density
     """
 
-    def __init__(self, rsun=PARAMS['sun_location'][1], clumps_file=None, voids_file=None,
+    def __init__(self, clumps_file=None, voids_file=None,
                  **params):
         """
         """
         self._params = params
-        self._thick_disk = NEobject(thick_disk, rsun=rsun,
-                                    **params['thick_disk'])
+        self._thick_disk = NEobject(thick_disk, **params['thick_disk'])
         self._thin_disk = NEobject(thin_disk, **params['thin_disk'])
         self._galactic_center = NEobject(gc, **params['galactic_center'])
         self._lism = LocalISM(**params)
