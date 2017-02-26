@@ -3,6 +3,7 @@ from __future__ import division
 import os
 from builtins import super
 from functools import partial
+import pdb
 
 
 import numpy as np
@@ -153,7 +154,10 @@ def thin_disk(xyz, radius, height):
      at x, y, z = `xyz`
     """
     rad2 = sqrt(rad2d2(xyz))
-    return (exp(-(radius - rad2)**2/1.8**2) /
+    if (np.abs(radius-rad2) > 20.) or (np.abs(xyz[-1]) > 40):  # Avoids floating point error
+        return 0.
+    else:
+        return (exp(-(radius - rad2)**2/1.8**2) /
             cosh(xyz[-1]/height)**2)  # Why 1.8?
 
 

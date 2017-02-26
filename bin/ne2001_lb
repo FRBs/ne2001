@@ -1,0 +1,16 @@
+#!/usr/bin/env python
+#
+# See top-level LICENSE file for Copyright information
+#
+# -*- coding: utf-8 -*-
+
+
+"""
+This script calculates a few things along a Galactic sightline
+"""
+
+from ne2001.scripts import simple_lb
+
+if __name__ == '__main__':
+    args = simple_lb.parser()
+    simple_lb.main(args)
