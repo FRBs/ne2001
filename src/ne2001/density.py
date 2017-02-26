@@ -154,11 +154,14 @@ def thin_disk(xyz, radius, height):
      at x, y, z = `xyz`
     """
     rad2 = sqrt(rad2d2(xyz))
-    if (np.abs(radius-rad2) > 20.) or (np.abs(xyz[-1]) > 40):  # Avoids floating point error
-        return 0.
-    else:
-        return (exp(-(radius - rad2)**2/1.8**2) /
-            cosh(xyz[-1]/height)**2)  # Why 1.8?
+    dens = np.zeros_like(rad2)
+    zeros = np.any([np.abs(radius-rad2) > 20., np.abs(xyz[-1]) > 40],axis=0)  # Avoid floating point
+    # Ok
+    ok = ~zeros
+    dens[ok] = (exp(-(radius - rad2[ok])**2/1.8**2) /
+            cosh(xyz[-1][ok]/height)**2)  # Why 1.8?
+    # Return
+    return dens
 
 
 def gc(xyz, center, radius, height):

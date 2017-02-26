@@ -7,6 +7,7 @@ from numpy.random import rand
 from numpy.random import randint
 from numpy.random import seed
 from scipy import integrate
+import pytest
 
 from ne2001 import density
 from ne2001 import utils
@@ -33,7 +34,7 @@ def test_density():
     assert all(ne_disk1 >= 0)
 
     ne_disk2 = density.NEobject(density.thin_disk, **PARAMS['thin_disk']).ne(xyz)
-    assert len(ne_disk2) == 100
+    assert ne_disk2.size == 100
     assert all(ne_disk2 >= 0)
 
     ne_gc = density.NEobject(density.gc, **PARAMS['galactic_center']).ne(xyz)
