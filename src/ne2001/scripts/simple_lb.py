@@ -7,7 +7,7 @@ def parser(options=None):
 
     import argparse
 
-    parser = argparse.ArgumentParser(description='ne2001_lb script v0.1')
+    parser = argparse.ArgumentParser(description='Calculate quantities along a Galactic sightline v0.1')
     parser.add_argument("l", type=float, help="Galactic longitude (deg)")
     parser.add_argument("b", type=float, help="Galactic latitude (deg)")
     parser.add_argument("-d", type=float, default=100., help="Distance (kpc)")
