@@ -17,6 +17,8 @@ from numpy import tan
 from scipy.integrate import cumtrapz
 from scipy.integrate import quad
 
+from astropy import units as u
+
 from .utils import galactic_to_galactocentric
 from .utils import lzproperty
 from .utils import rotation
@@ -109,6 +111,7 @@ PARAMS = {
                  'e_density': 0.0125,
                  'F': 0.01}}
 
+DM_unit = u.pc / u.cm**3
 
 def rad3d2(xyz):
     return xyz[0]**2 + xyz[1]**2 + xyz[-1]**2
@@ -218,8 +221,26 @@ class NEobject(object):
     def DM(self, l, b, d,
            epsrel=1e-4, epsabs=1e-6, integrator=quad, step_size=0.001,
            *arg, **kwargs):
-        """
-        Calculate the dispersion measure at location `xyz`
+        """ Calculate the dispersion measure towards direction l,b
+
+        Parameters
+        ----------
+        l : float or Angle
+          Galactic longitude; assumed deg if unitless
+        b : float
+          Galactic latitude; assumed deg if unitless
+        d : float or Quantity
+          Distance to source; assumed kpc if unitless
+        epsrel : float, optional
+        epsabs : float, optional
+        integrator : method
+        step_size : float, optional
+
+        Returns
+        -------
+        DM : Quantity
+          Dispersion Measure with units pc cm**-3
+
         """
         xyz = galactic_to_galactocentric(l, b, d, [0, 0, 0])
 
@@ -227,13 +248,13 @@ class NEobject(object):
         if integrator.__name__ is 'quad':
             return integrator(lambda x: self.ne(XYZ_SUN + x*xyz),
                               0, 1, *arg, epsrel=epsrel, epsabs=epsabs,
-                              **kwargs)[0]*dfinal*1000
+                              **kwargs)[0]*dfinal*1000 * DM_unit
         else:   # Assuming sapling integrator
             nsamp = max(1000, dfinal/step_size)
             x = np.linspace(0, 1, nsamp + 1)
             xyz = galactic_to_galactocentric(l, b, x*dfinal, XYZ_SUN)
             ne = self.ne(xyz)
-            return integrator(ne)*dfinal*1000*x[1]
+            return integrator(ne)*dfinal*1000*x[1] * DM_unit
 
     def dist(self, l, b, DM, step_size=0.001):
         """
