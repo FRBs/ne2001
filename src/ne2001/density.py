@@ -22,6 +22,8 @@ from astropy import units as u
 from .utils import galactic_to_galactocentric
 from .utils import lzproperty
 from .utils import rotation
+from .utils import parse_lbd
+from .utils import parse_DM
 
 
 # import astropy.units as us
@@ -111,7 +113,6 @@ PARAMS = {
                  'e_density': 0.0125,
                  'F': 0.01}}
 
-DM_unit = u.pc / u.cm**3
 
 def rad3d2(xyz):
     return xyz[0]**2 + xyz[1]**2 + xyz[-1]**2
@@ -128,9 +129,14 @@ def matmul(a, b):
         return np.matmul(a, b)
 
 
+
+# Units
+DM_unit = u.pc / u.cm**3
+d_unit = u.kpc
+
+# Sun
 XYZ_SUN = np.array([0, 8.5, 0])
 RSUN = sqrt(rad2d2(XYZ_SUN))
-
 
 def set_xyz_sun(xyz_sun):
     global XYZ_SUN
@@ -242,6 +248,9 @@ class NEobject(object):
           Dispersion Measure with units pc cm**-3
 
         """
+        # Convert to floats
+        l,b,d = parse_lbd(l,b,d)
+        #
         xyz = galactic_to_galactocentric(l, b, d, [0, 0, 0])
 
         dfinal = sqrt(rad3d2(xyz))
@@ -257,22 +266,37 @@ class NEobject(object):
             return integrator(ne)*dfinal*1000*x[1] * DM_unit
 
     def dist(self, l, b, DM, step_size=0.001):
+        """ Estimate the distance to an object with dispersion measure `DM`
+        Located at the direction `l ,b'
+
+        Parameters
+        ----------
+        l : float or Angle
+          Galactic longitude; assumed deg if unitless
+        b : float
+          Galactic latitude; assumed deg if unitless
+        DM : float or Quantity
+          Dispersion Measure;  assumed pc cm**^-3 if unitless
+        step_size
+
+        Returns
+        -------
+
         """
-        Estimate the distance to an object with dispersion measure `DM`
-        located at the direction `l ,b'
-        """
+        # Parse
+        DM = parse_DM(DM)
 
         # Initial guess
         dist0 = DM/PARAMS['thick_disk']['e_density']/1000
 
-        while self.DM(l, b, dist0) < DM:
+        while self.DM(l, b, dist0).value < DM:
             dist0 *= 2
 
         nsamp = max(1000, dist0/step_size)
         d_samp = np.linspace(0, dist0, nsamp + 1)
         ne_samp = self.ne(galactic_to_galactocentric(l, b, d_samp, XYZ_SUN))
         dm_samp = cumtrapz(ne_samp, dx=d_samp[1])*1000
-        return np.interp(DM, dm_samp, d_samp[1:])
+        return np.interp(DM, dm_samp, d_samp[1:]) * d_unit
 
     def ne(self, xyz):
         "Electron density at the location `xyz`"
