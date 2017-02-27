@@ -2,4 +2,5 @@
 Authors
 =======
 
-* Ben Bar-Or -  
+* Ben Bar-Or -
+* J. Xavier Prochaska -

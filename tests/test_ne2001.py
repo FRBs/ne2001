@@ -94,7 +94,7 @@ def test_void():
     assert ne_voids[ix] == voids.ne(xyz[:, ix])
     l, b, d = -2, 12, 1
     DM = 0.9308054
-    assert abs(voids.DM(l, b, d) - DM)/DM < tol
+    assert abs(voids.DM(l, b, d).value - DM)/DM < tol
 
 
 def test_local_ism():
@@ -106,7 +106,7 @@ def test_local_ism():
     assert len(local_ism.ne(xyz)) == 100
     l, b, d = -2, 12, 1
     DM = 2.453550
-    assert (abs(local_ism.DM(l, b, d) -
+    assert (abs(local_ism.DM(l, b, d).value -
                 DM)/DM < tol)
 
 def test_DM():
@@ -115,7 +115,7 @@ def test_DM():
     xyz = np.array([0.1503843, 7.647129, 0.5000018])
     l, b, d = 10, 30, 1
     DM = 32.36372
-    assert abs(d1.DM(l, b, d) - DM) / DM  < tol
+    assert abs(d1.DM(l, b, d).value - DM) / DM  < tol
 
 
     d2 = density.NEobject(density.thin_disk,
@@ -124,7 +124,7 @@ def test_DM():
 
     l, b, d = 10, 30, 1
     DM = 0.046937
-    assert abs(d2.DM(l, b, d) - DM) / DM  < tol
+    assert abs(d2.DM(l, b, d).value - DM) / DM  < tol
 
 
 def test_electron_density_quad():
@@ -132,7 +132,7 @@ def test_electron_density_quad():
     ne = density.ElectronDensity(**PARAMS)
     l, b, d = -2, 12, 1
     DM = 23.98557
-    assert abs(ne.DM(l, b, d) - DM)/DM < tol
+    assert abs(ne.DM(l, b, d).value - DM)/DM < tol
 
 
 def test_electron_density_trapz():
@@ -140,7 +140,7 @@ def test_electron_density_trapz():
     ne = density.ElectronDensity(**PARAMS)
     l, b, d = -2, 12, 1
     DM = 23.98557
-    assert abs(ne.DM(l, b, d, integrator=integrate.trapz) - DM)/DM < tol
+    assert abs(ne.DM(l, b, d, integrator=integrate.trapz).value - DM)/DM < tol
 
 
 def test_dist():
@@ -153,6 +153,6 @@ def test_dist():
         d = rand()*5
         DM = ne.DM(l, b, d)
         d_DM = ne.dist(l, b, DM)
-        err = abs(d_DM - d)/d
+        err = abs(d_DM.value - d)/d
         print(err, l, b, d, d_DM)
         assert err < tol, (l, b, d)

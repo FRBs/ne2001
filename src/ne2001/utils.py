@@ -7,6 +7,20 @@ from numpy import sin
 
 from astropy.coordinates import Angle
 from astropy.units import Quantity
+from astropy.units.core import UnitConversionError
+
+
+def parse_DM(in_DM):
+    """ Convert, as necessary, DM into float
+    """
+    if isinstance(in_DM, float):
+        DM = in_DM
+    elif isinstance(in_DM, Quantity):
+        DM = in_DM.to('pc/cm**3').value
+    else:
+        raise IOError("Bad format for input DM")
+    # Return
+    return DM
 
 
 def parse_lbd(in_l, in_b, in_d):
@@ -31,6 +45,8 @@ def parse_lbd(in_l, in_b, in_d):
     # l
     if isinstance(in_l, float):
         l = in_l
+    elif isinstance(in_l, int):
+        l = float(in_l)
     elif isinstance(in_l, (Angle,Quantity)):
         l = in_l.value
     else:
@@ -38,6 +54,8 @@ def parse_lbd(in_l, in_b, in_d):
     # b
     if isinstance(in_b, float):
         b = in_b
+    elif isinstance(in_b, int):
+        b = float(in_b)
     elif isinstance(in_b, (Angle,Quantity)):
         b = in_b.value
     else:
@@ -45,6 +63,8 @@ def parse_lbd(in_l, in_b, in_d):
     # d
     if isinstance(in_d, float):
         d = in_d
+    elif isinstance(in_d, int):
+        d = float(in_d)
     elif isinstance(in_d, (Quantity)):
         d = in_d.to('kpc').value
     else:

@@ -19,7 +19,7 @@ def parser(options=None):
     return args
 
 
-def main(pargs, unit_test=False, **kwargs):
+def main(pargs, **kwargs):
     """ Run
     """
     from ne2001 import density
@@ -33,7 +33,7 @@ def main(pargs, unit_test=False, **kwargs):
     print("----------------------------------------------")
     print("DM:")
     print("  Along l={:g} deg and b={:g} deg to d={:g} kpc".format(pargs.l, pargs.b, pargs.d))
-    print("  DM = {:g} pc cm^-3".format(DM))
+    print("  DM = {:g}".format(DM))
     print("----------------------------------------------")
     #
 
