@@ -6,6 +6,7 @@ from __future__ import print_function
 import io
 import re
 from glob import glob
+import os
 from os.path import basename
 from os.path import dirname
 from os.path import join
@@ -21,6 +22,11 @@ def read(*names, **kwargs):
         encoding=kwargs.get('encoding', 'utf8')
     ).read()
 
+#
+setup_keywords = dict()
+if os.path.isdir('bin'):
+    setup_keywords['scripts'] = [fname for fname in glob(os.path.join('bin', '*'))
+                                 if not os.path.basename(fname).endswith('.rst')]
 
 setup(
     name='ne2001',
@@ -61,6 +67,7 @@ setup(
         # 'Programming Language :: Python :: Implementation :: Stackless',
         'Topic :: Utilities',
     ],
+    scripts=setup_keywords['scripts'],
     keywords=[
         # eg: 'keyword1', 'keyword2', 'keyword3',
     ],

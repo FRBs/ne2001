@@ -1,0 +1,12 @@
+{
+    "Fgc0": 60000.0,
+    "centroid": {
+        "xgc": -0.01,
+        "ygc": 0.0,
+        "zgc": -0.02
+    },
+    "filename": "ne_gc.inp",
+    "hgc": 0.026,
+    "negc0": 10.0,
+    "rgc": 0.145
+}
