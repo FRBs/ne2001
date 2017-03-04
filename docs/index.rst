@@ -7,6 +7,7 @@ Contents
 
    readme
    installation
+   code
    usage
    scripts
    reference/index
