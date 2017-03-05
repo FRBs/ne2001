@@ -8,6 +8,7 @@ Contents
    readme
    installation
    code
+   parameters
    usage
    scripts
    reference/index

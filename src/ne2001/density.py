@@ -73,6 +73,7 @@ from .io import read_galparam
 #                       'farm4': 1.5,
 #                       'farm5': 0.3}
 
+'''
 PARAMS = {
     'thick_disk': {'e_density': 0.033/0.97,
                    'height': 0.97,
@@ -127,6 +128,7 @@ PARAMS = {
               'radius': 0.,
               'e_density': 1.,
               'F': 1.0}}
+'''
 
 
 def matmul(a, b):
@@ -306,7 +308,7 @@ class NEobject(object):
         DM = parse_DM(DM)
 
         # Initial guess
-        dist0 = DM/PARAMS['thick_disk']['e_density']/1000
+        dist0 = DM/self._params['thick_disk']['e_density']/1000
 
         while self.DM(l, b, dist0).value < DM:
             dist0 *= 2
