@@ -1,26 +1,50 @@
 """ Module for I/O
 """
-from __future__ import absolute_import, division, print_function
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
+import json
+import os
 
 import numpy as np
-import json
-import pdb
 
 import ne2001
-data_path = ne2001.__path__[0]+'/data/'
 
 
-def read_params(ifile='ne2001_params.json'):
-    """ Read parameter file"""
-    # Read
-    with open(data_path+ifile, 'rt') as fh:
-        PARAMS = json.load(fh)
-    # Recast?
-    return PARAMS
+DATA_PATH = os.path.join(ne2001.__path__[0], 'data')
+
+
+class Params(dict):
+    """
+    Input parameters
+    """
+
+    def __init__(self, ifile='ne2001_params.json', path=None):
+        """
+        """
+        if path is None:
+            path = DATA_PATH
+        self.path = path
+        self.ifile = ifile
+        try:
+            params = parse_json(os.path.join(self.path, self.ifile))
+        except IOError:
+            params = {}
+        super().__init__(params)
+
+
+def parse_json(json_file):
+    "Parse json file"
+    with open(json_file, 'rt') as json_data:
+        data = json.load(json_data)
+    return data
 
 
 def read_galparam(ifile='gal_param.json'):
-    """ Read Galaxy parameters
+    """
+    Read Galaxy parameters
+
     Parameters
     ----------
     ifile : str, optional
@@ -30,38 +54,43 @@ def read_galparam(ifile='gal_param.json'):
     gal_param : dict
 
     """
-    # Read
-    with open(data_path+ifile, 'rt') as fh:
-        galparam_dict = json.load(fh)
-    # Thick disk
-    thick_dict = dict(e_density=galparam_dict['n1h1']/galparam_dict['h1'],
-                      height=galparam_dict['h1'],
-                      radius=galparam_dict['A1'],
-                      F=galparam_dict['F1'],
-                      )
-    # Thin disk
-    thin_dict = dict(e_density=galparam_dict['n2'],
-                      height=galparam_dict['h2'],
-                      radius=galparam_dict['A2'],
-                      F=galparam_dict['F2'],
-                      )
-    # Return
-    return galparam_dict
+    old_param = parse_json(os.path.join(DATA_PATH, ifile))
+    gal_param = {}
+
+
+    gal_param['thick_dict'] = dict(e_density=(old_param['n1h1'] /
+                                              old_param['h1']),
+                                   height=old_param['h1'],
+                                   radius=old_param['A1'],
+                                   F=old_param['F1'])
+
+    gal_param['thin_dict'] = dict(e_density=old_param['n2'],
+                                  height=old_param['h2'],
+                                  radius=old_param['A2'],
+                                  F=old_param['F2'])
+
+    return gal_param
 
 
 def read_gc(ifile='ne_gc.json'):
     """ Read Galactic Center parameters
     Returns
     -------
-    gc_dict : dict
+    gc_param : dict
       dict of parameters
 
     """
-    # Read
-    with open(data_path+ifile, 'rt') as fh:
-        gc_dict = json.load(fh)
-    # Return
-    return gc_dict
+    old_param = parse_json(os.path.join(DATA_PATH, ifile))
+    gc_param = {}
+
+    gc_param['galactic_center'] = dict(e_density=old_param['negc0'],
+                                       center=tuple(old_param['centroid'].
+                                                    values()),
+                                       F=old_param['Fgc0'],
+                                       height=old_param['hgc'],
+                                       radius=old_param['rgc'])
+
+    return gc_param
 
 
 def read_lism(ifile='ne_lism.json'):
