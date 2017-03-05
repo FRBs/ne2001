@@ -138,7 +138,6 @@ def init_spiral_arms():
     open(11,file=logarms, status='unknown')
         write(11,*) 'arm  n   xa     ya'
     """
-    from xastropy.xutils import xdebug as xdb
     #do 21 j=1,narms
     for j in range(narms):
         dth = 5.0/r1[0,j]  # Python indexing
