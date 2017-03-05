@@ -10,6 +10,14 @@ from astropy.units import Quantity
 from astropy.units.core import UnitConversionError
 
 
+def rad3d2(xyz):
+    return xyz[0]**2 + xyz[1]**2 + xyz[-1]**2
+
+
+def rad2d2(xyz):
+    return xyz[0]**2 + xyz[1]**2
+
+
 def parse_DM(in_DM):
     """ Convert, as necessary, DM into float
     """

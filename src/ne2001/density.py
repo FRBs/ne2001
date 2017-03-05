@@ -24,6 +24,11 @@ from .utils import lzproperty
 from .utils import rotation
 from .utils import parse_lbd
 from .utils import parse_DM
+from .utils import rad3d2
+from .utils import rad2d2
+from .spiral_arms import ne_spiral_arm
+from .io import init_spiral_arms
+from .io import read_galparam
 
 
 # import astropy.units as us
@@ -111,15 +116,17 @@ PARAMS = {
     'loop_out': {'center': np.array([-0.045, 8.40, 0.07]),
                  'radius': 0.120 + 0.060,
                  'e_density': 0.0125,
-                 'F': 0.01}}
+                 'F': 0.01},
 
+    'spiral_arms': {'adict': init_spiral_arms(),
+                    'gal_param': read_galparam(),
+                    'e_density': 1.,
+                    'F': 1.0},
 
-def rad3d2(xyz):
-    return xyz[0]**2 + xyz[1]**2 + xyz[-1]**2
-
-
-def rad2d2(xyz):
-    return xyz[0]**2 + xyz[1]**2
+    'dummy': {'center': np.array([0.,0.,0.]),
+              'radius': 0.,
+              'e_density': 1.,
+              'F': 1.0}}
 
 
 def matmul(a, b):
@@ -147,14 +154,26 @@ def set_xyz_sun(xyz_sun):
 
 
 def thick_disk(xyz, radius, height):
-    """
-    Calculate the contribution of the thick disk to the free electron density
-     at x, y, z = `xyz`
+    """ Calculate the contribution of the thick disk to the free electron density
+    at x, y, z = `xyz`
+    Parameters
+    ----------
+    xyz
+    radius
+    height
+
+    Returns
+    -------
+    dens : ndarray
+      Density values
+
     """
     r_ratio = sqrt(rad2d2(xyz))/radius
-    return (cos(r_ratio*pi/2)/cos(RSUN*pi/2/radius) /
+    dens = (cos(r_ratio*pi/2)/cos(RSUN*pi/2/radius) /
             cosh(xyz[-1]/height)**2 *
             (r_ratio < 1))
+    # Return
+    return dens
 
 
 def thin_disk(xyz, radius, height):
@@ -583,13 +602,14 @@ class ElectronDensity(NEobject):
         self._params = params
         self._thick_disk = NEobject(thick_disk, **params['thick_disk'])
         self._thin_disk = NEobject(thin_disk, **params['thin_disk'])
+        self._spiral_arms = NEobject(ne_spiral_arm, **params['spiral_arms'])
         self._galactic_center = NEobject(gc, **params['galactic_center'])
         self._lism = LocalISM(**params)
         self._clumps = Clumps(clumps_file=clumps_file)
         self._voids = Voids(voids_file=voids_file)
         self._combined = ((self._voids |
                           (self._lism |
-                           (self._thick_disk +
+                           (self._thick_disk + self._spiral_arms +
                             self._thin_disk +
                             self._galactic_center))) +
                           self._clumps)
