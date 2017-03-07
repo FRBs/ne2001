@@ -15,6 +15,12 @@ def read_params(ifile='ne2001_params.json'):
     # Read
     with open(data_path+ifile, 'rt') as fh:
         PARAMS = json.load(fh)
+    # Convert lists to array (maybe should save these as YAML not JSON)
+    for key in PARAMS:
+        if isinstance(PARAMS[key], dict):
+            for key2,item in PARAMS[key].items():
+                if isinstance(item,list):
+                    PARAMS[key][key2] = np.array(item)
     # Add
     PARAMS['spiral_arms']['adict']  = init_spiral_arms()
     PARAMS['spiral_arms']['gal_param'] = read_galparam()

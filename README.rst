@@ -16,7 +16,7 @@ Overview
 ..    * - package
 
 
-   
+
 .. |docs| image:: https://readthedocs.org/projects/ne2001/badge/?style=flat
     :target: https://readthedocs.org/projects/ne2001
     :alt: Documentation Status
@@ -54,10 +54,13 @@ Overview
     :target: https://scrutinizer-ci.com/g/benbaror/ne2001/
 
 
-   
+
 .. end-badges
 
-Python implementation of Cordes-Lazio's NE2001 Galactic Free Electron Density Model
+Python implementation of Cordes-Lazio's NE2001 Galactic Free Electron Density Model.
+BEWARE:  The code as implemented in FORTRAN differs in several ways from the
+2003 posting (astro-ph/0301598: http://adsabs.harvard.edu/abs/2003astro.ph..1598C ).
+See the docs for details.
 
 * Free software: BSD license
 
