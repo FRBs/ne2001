@@ -25,8 +25,8 @@ def main(pargs, **kwargs):
     from ne2001 import density
     from ne2001 import io as ne_io
     # init
-    PARAMS = ne_io.read_params()
-    ne = density.ElectronDensity(**PARAMS)
+    params = ne_io.Params()
+    ne = density.ElectronDensity(**params)
 
     # DM
     DM = ne.DM(pargs.l, pargs.b, pargs.d)
