@@ -2,17 +2,17 @@
 import os
 
 import numpy as np
+import pytest
 from click.testing import CliRunner
 from numpy.random import rand
 from numpy.random import randint
 from numpy.random import seed
 from scipy import integrate
-import pytest
 
+from ne2001 import io as ne_io
 from ne2001 import density
 from ne2001 import utils
 from ne2001.cli import main
-from ne2001 import io as ne_io
 
 PARAMS = ne_io.Params()
 density.set_xyz_sun(np.array([0, 8.5, 0]))

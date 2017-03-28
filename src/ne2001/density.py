@@ -19,68 +19,12 @@ from scipy.integrate import quad
 
 from .utils import galactic_to_galactocentric
 from .utils import lzproperty
+from .utils import matmul
 from .utils import parse_DM
 from .utils import parse_lbd
+from .utils import rad2d2
+from .utils import rad3d2
 from .utils import rotation
-
-# import astropy.units as us
-# from astropy.coordinates import SkyCoord
-
-# Configuration
-# TODO: use to config file
-# input parameters for large-scale components of NE2001 30 June '02
-# flags = {'wg1': 1,
-#          'wg2': 1,
-#          'wga': 1,
-#          'wggc': 1,
-#          'wglism': 1,
-#          'wgcN': 1,
-#          'wgvN': 1}
-
-# solar_params = {'Rsun': 8.3}
-
-# spiral_arms_params = {'na': 0.028,
-#                       'ha': 0.23,
-#                       'wa': 0.65,
-#                       'Aa': 10.5,
-#                       'Fa': 5,
-#                       'narm1': 0.5,
-#                       'narm2': 1.2,
-#                       'narm3': 1.3,
-#                       'narm4': 1.0,
-#                       'narm5': 0.25,
-#                       'warm1': 1.0,
-#                       'warm2': 1.5,
-#                       'warm3': 1.0,
-#                       'warm4': 0.8,
-#                       'warm5': 1.0,
-#                       'harm1': 1.0,
-#                       'harm2': 0.8,
-#                       'harm3': 1.3,
-#                       'harm4': 1.5,
-#                       'harm5': 1.0,
-#                       'farm1': 1.1,
-#                       'farm2': 0.3,
-#                       'farm3': 0.4,
-#                       'farm4': 1.5,
-#                       'farm5': 0.3}
-
-
-def rad3d2(xyz):
-    return xyz[0]**2 + xyz[1]**2 + xyz[-1]**2
-
-
-def rad2d2(xyz):
-    return xyz[0]**2 + xyz[1]**2
-
-
-def matmul(a, b):
-    try:
-        return a.__matmul__(b)
-    except AttributeError:
-        return np.matmul(a, b)
-
-
 
 # Units
 DM_unit = u.pc / u.cm**3
@@ -89,6 +33,7 @@ d_unit = u.kpc
 # Sun
 XYZ_SUN = np.array([0, 8.5, 0])
 RSUN = sqrt(rad2d2(XYZ_SUN))
+
 
 def set_xyz_sun(xyz_sun):
     global XYZ_SUN
@@ -116,12 +61,11 @@ def thin_disk(xyz, radius, height):
     """
     rad2 = sqrt(rad2d2(xyz))
     dens = np.zeros_like(rad2)
-    zeros = np.any([np.abs(radius-rad2) > 20., np.abs(xyz[-1]) > 40],axis=0)  # Avoid floating point
-    # Ok
+    # Avoid floating point
+    zeros = np.any([np.abs(radius-rad2) > 20., np.abs(xyz[-1]) > 40], axis=0)
     ok = ~zeros
     dens[ok] = (exp(-(radius - rad2[ok])**2/1.8**2) /
-            cosh(xyz[-1][ok]/height)**2)  # Why 1.8?
-    # Return
+                cosh(xyz[-1][ok]/height)**2)  # Why 1.8?
     return dens
 
 
@@ -201,7 +145,7 @@ class NEobject(object):
 
         """
         # Convert to floats
-        l,b,d = parse_lbd(l,b,d)
+        l, b, d = parse_lbd(l, b, d)
         #
         xyz = galactic_to_galactocentric(l, b, d, [0, 0, 0])
 

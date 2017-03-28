@@ -1,11 +1,12 @@
 """ Simple calculations along a Galactic lb to 'infinite' distance
 """
+import argparse
 
-import pdb
+from ne2001 import io as ne_io
+from ne2001 import density
+
 
 def parser(options=None):
-
-    import argparse
 
     parser = argparse.ArgumentParser(description='Calculate quantities along a Galactic sightline v0.1')
     parser.add_argument("l", type=float, help="Galactic longitude (deg)")
@@ -22,8 +23,6 @@ def parser(options=None):
 def main(pargs, **kwargs):
     """ Run
     """
-    from ne2001 import density
-    from ne2001 import io as ne_io
     # init
     params = ne_io.Params()
     ne = density.ElectronDensity(**params)
@@ -36,5 +35,3 @@ def main(pargs, **kwargs):
     print("  DM = {:g}".format(DM))
     print("----------------------------------------------")
     #
-
-

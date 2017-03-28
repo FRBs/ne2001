@@ -3,12 +3,11 @@
 
 import numpy as np
 import pytest
+from astropy import units as u
+from astropy.coordinates import Angle
+from astropy.units.core import UnitConversionError
 
 from ne2001 import utils
-
-from astropy.coordinates import Angle
-from astropy import units as u
-from astropy.units.core import UnitConversionError
 
 
 def test_parse_lbd():

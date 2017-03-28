@@ -5,8 +5,9 @@ import os
 import numpy as np
 from scipy import integrate
 
-from ne2001 import density
 from ne2001 import io as ne_io
+from ne2001 import density
+
 
 def test_params():
     params = ne_io.Params()
@@ -20,5 +21,3 @@ def test_galparam():
     assert isinstance(gal_param, dict)
     assert 'thick_disk' in gal_param
     assert 'thin_disk' in gal_param
-
-
