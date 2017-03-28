@@ -3,17 +3,31 @@
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
-from builtins import super
 
 import json
 import os
+from builtins import super
 
 import numpy as np
 
 import ne2001
 
-
 DATA_PATH = os.path.join(ne2001.__path__[0], 'data')
+
+
+def numpify_dict(d):
+    """
+    Recursively make lists in a dictionary into numpy array
+    """
+    def numpify(d):
+        for k, v in d.items():
+            if isinstance(v, list):
+                d[k] = np.array(v)
+            elif isinstance(v, dict):
+                numpify(v)
+    new_dict = d.copy()
+    numpify(new_dict)
+    return new_dict
 
 
 class Params(dict):
@@ -29,7 +43,7 @@ class Params(dict):
         self.path = path
         self.ifile = ifile
         try:
-            params = parse_json(os.path.join(self.path, self.ifile))
+            params = numpify_dict(parse_json(os.path.join(self.path, self.ifile)))
         except IOError:
             params = {}
         super().__init__(params)
