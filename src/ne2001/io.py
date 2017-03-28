@@ -3,6 +3,7 @@
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
+from builtins import super
 
 import json
 import os
@@ -58,13 +59,13 @@ def read_galparam(ifile='gal_param.json'):
     gal_param = {}
 
 
-    gal_param['thick_dict'] = dict(e_density=(old_param['n1h1'] /
+    gal_param['thick_disk'] = dict(e_density=(old_param['n1h1'] /
                                               old_param['h1']),
                                    height=old_param['h1'],
                                    radius=old_param['A1'],
                                    F=old_param['F1'])
 
-    gal_param['thin_dict'] = dict(e_density=old_param['n2'],
+    gal_param['thin_disk'] = dict(e_density=old_param['n2'],
                                   height=old_param['h2'],
                                   radius=old_param['A2'],
                                   F=old_param['F2'])
