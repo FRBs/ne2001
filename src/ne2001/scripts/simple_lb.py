@@ -2,7 +2,6 @@
 """
 import argparse
 
-from ne2001 import io as ne_io
 from ne2001 import density
 
 
@@ -24,8 +23,7 @@ def main(pargs, **kwargs):
     """ Run
     """
     # init
-    params = ne_io.Params()
-    ne = density.ElectronDensity(**params)
+    ne = density.ElectronDensity()
 
     # DM
     DM = ne.DM(pargs.l, pargs.b, pargs.d)

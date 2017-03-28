@@ -37,7 +37,7 @@ class Params(dict):
     Input parameters
     """
 
-    def __init__(self, ifile='ne2001_params.json', path=None):
+    def __init__(self, ifile='ne2001_params.json', path=None, **new_params):
         """
         """
         if path is None:
@@ -49,6 +49,7 @@ class Params(dict):
                                                           self.ifile)))
         except IOError:
             params = {}
+        params.update(new_params)
         super().__init__(params)
 
 

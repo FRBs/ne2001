@@ -130,7 +130,7 @@ def test_DM():
 
 def test_electron_density_quad():
     tol = 1e-3
-    ne = density.ElectronDensity(**PARAMS)
+    ne = density.ElectronDensity()
     l, b, d = -2, 12, 1
     DM = 23.98557
     assert abs(ne.DM(l, b, d).value - DM)/DM < tol
@@ -138,7 +138,7 @@ def test_electron_density_quad():
 
 def test_electron_density_trapz():
     tol = 1e-3
-    ne = density.ElectronDensity(**PARAMS)
+    ne = density.ElectronDensity()
     l, b, d = -2, 12, 1
     DM = 23.98557
     assert abs(ne.DM(l, b, d, integrator=integrate.trapz).value - DM)/DM < tol
@@ -148,7 +148,7 @@ def test_dist():
     seed(123)
     for i in range(10):
         tol = 0.1
-        ne = density.ElectronDensity(**PARAMS)
+        ne = density.ElectronDensity()
         l = rand()*360
         b = np.arccos(1 - 2*rand())/np.pi*180
         d = rand()*5

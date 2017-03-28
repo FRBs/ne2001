@@ -17,6 +17,7 @@ from numpy import tan
 from scipy.integrate import cumtrapz
 from scipy.integrate import quad
 
+from . import io as ne_io
 from .utils import galactic_to_galactocentric
 from .utils import lzproperty
 from .utils import matmul
@@ -105,7 +106,6 @@ class NEobject(object):
         - `func`: Electron density function
         - `**params`: Model parameter
         """
-        self._params = params
         self._fparam = params.pop('F')
         self._ne0 = params.pop('e_density')
         try:
@@ -183,7 +183,7 @@ class NEobject(object):
         DM = parse_DM(DM)
 
         # Initial guess
-        dist0 = DM/self._params['thick_disk']['e_density']/1000
+        dist0 = DM/self.params['thick_disk']['e_density']/1000
 
         while self.DM(l, b, dist0).value < DM:
             dist0 *= 2
@@ -476,11 +476,11 @@ class ElectronDensity(NEobject):
                  **params):
         """
         """
-        self._params = params
-        self._thick_disk = NEobject(thick_disk, **params['thick_disk'])
-        self._thin_disk = NEobject(thin_disk, **params['thin_disk'])
-        self._galactic_center = NEobject(gc, **params['galactic_center'])
-        self._lism = LocalISM(**params)
+        self._params = ne_io.Params(**params)
+        self._thick_disk = NEobject(thick_disk, **self.params['thick_disk'])
+        self._thin_disk = NEobject(thin_disk, **self.params['thin_disk'])
+        self._galactic_center = NEobject(gc, **self.params['galactic_center'])
+        self._lism = LocalISM(**self.params)
         self._clumps = Clumps(clumps_file=clumps_file)
         self._voids = Voids(voids_file=voids_file)
         self._combined = ((self._voids |
@@ -492,6 +492,10 @@ class ElectronDensity(NEobject):
 
     def electron_density(self, xyz):
         return self._combined.ne(xyz)
+
+    @property
+    def params(self):
+        return self._params
 
 
 class Ellipsoid(object):
