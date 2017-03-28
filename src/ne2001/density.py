@@ -17,7 +17,7 @@ from numpy import tan
 from scipy.integrate import cumtrapz
 from scipy.integrate import quad
 
-from . import io as ne_io
+from . import ne_io
 from .utils import galactic_to_galactocentric
 from .utils import lzproperty
 from .utils import matmul

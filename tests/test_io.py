@@ -5,8 +5,8 @@ import os
 import numpy as np
 from scipy import integrate
 
-from ne2001 import io as ne_io
 from ne2001 import density
+from ne2001 import ne_io
 
 
 def test_params():
