@@ -12,8 +12,9 @@ import pytest
 from ne2001 import density
 from ne2001 import utils
 from ne2001.cli import main
+from ne2001 import io as ne_io
 
-PARAMS = density.PARAMS
+PARAMS = ne_io.Params()
 density.set_xyz_sun(np.array([0, 8.5, 0]))
 
 

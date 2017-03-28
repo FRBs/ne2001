@@ -1,12 +1,12 @@
 "Free electron density model"
 from __future__ import division
+
 import os
 from builtins import super
 from functools import partial
-import pdb
-
 
 import numpy as np
+from astropy import units as u
 from astropy.table import Table
 from numpy import cos
 from numpy import cosh
@@ -17,14 +17,11 @@ from numpy import tan
 from scipy.integrate import cumtrapz
 from scipy.integrate import quad
 
-from astropy import units as u
-
 from .utils import galactic_to_galactocentric
 from .utils import lzproperty
-from .utils import rotation
-from .utils import parse_lbd
 from .utils import parse_DM
-
+from .utils import parse_lbd
+from .utils import rotation
 
 # import astropy.units as us
 # from astropy.coordinates import SkyCoord
@@ -67,51 +64,6 @@ from .utils import parse_DM
 #                       'farm3': 0.4,
 #                       'farm4': 1.5,
 #                       'farm5': 0.3}
-
-PARAMS = {
-    'thick_disk': {'e_density': 0.033/0.97,
-                   'height': 0.97,
-                   'radius': 17.5,
-                   'F': 0.18},
-
-    'thin_disk': {'e_density': 0.08,
-                  'height': 0.15,
-                  'radius': 3.8,
-                  'F': 120},
-
-    'galactic_center': {'e_density': 10.0,
-                        'center': np.array([-0.01, 0.0, -0.020]),
-                        'radius': 0.145,
-                        'height': 0.026,
-                        'F': 0.6e5},
-
-    'ldr': {'ellipsoid': np.array([1.50, .750, .50]),
-            'center': np.array([1.36, 8.06, 0.0]),
-            'theta': -24.2*pi/180,
-            'e_density': 0.012,
-            'F': 0.1},
-
-    'lsb': {'ellipsoid': np.array([1.050, .4250, .3250]),
-            'center': np.array([-0.75, 9.0, -0.05]),
-            'theta': 139.*pi/180,
-            'e_density': 0.016,
-            'F': 0.01},
-
-    'lhb': {'cylinder': np.array([.0850, .1000, .330]),
-            'center': np.array([0.01, 8.45, 0.17]),
-            'theta': 15*pi/180,
-            'e_density': 0.005,
-            'F': 0.01},
-
-    'loop_in': {'center': np.array([-0.045, 8.40, 0.07]),
-                'radius': 0.120,
-                'e_density': 0.0125,
-                'F': 0.2},
-
-    'loop_out': {'center': np.array([-0.045, 8.40, 0.07]),
-                 'radius': 0.120 + 0.060,
-                 'e_density': 0.0125,
-                 'F': 0.01}}
 
 
 def rad3d2(xyz):
@@ -287,7 +239,7 @@ class NEobject(object):
         DM = parse_DM(DM)
 
         # Initial guess
-        dist0 = DM/PARAMS['thick_disk']['e_density']/1000
+        dist0 = DM/self._params['thick_disk']['e_density']/1000
 
         while self.DM(l, b, dist0).value < DM:
             dist0 *= 2
