@@ -1,12 +1,12 @@
 "Free electron density model"
 from __future__ import division
+
 import os
 from builtins import super
 from functools import partial
-import pdb
-
 
 import numpy as np
+from astropy import units as u
 from astropy.table import Table
 from numpy import cos
 from numpy import cosh
@@ -17,127 +17,11 @@ from numpy import tan
 from scipy.integrate import cumtrapz
 from scipy.integrate import quad
 
-from astropy import units as u
-
+from . import ne_io
 from .utils import galactic_to_galactocentric
 from .utils import lzproperty
-from .utils import rotation
-from .utils import parse_lbd
+from .utils import matmul
 from .utils import parse_DM
-from .utils import rad3d2
-from .utils import rad2d2
-from .spiral_arms import ne_spiral_arm
-from .io import init_spiral_arms
-from .io import read_galparam
-
-
-# import astropy.units as us
-# from astropy.coordinates import SkyCoord
-
-# Configuration
-# TODO: use to config file
-# input parameters for large-scale components of NE2001 30 June '02
-# flags = {'wg1': 1,
-#          'wg2': 1,
-#          'wga': 1,
-#          'wggc': 1,
-#          'wglism': 1,
-#          'wgcN': 1,
-#          'wgvN': 1}
-
-# solar_params = {'Rsun': 8.3}
-
-# spiral_arms_params = {'na': 0.028,
-#                       'ha': 0.23,
-#                       'wa': 0.65,
-#                       'Aa': 10.5,
-#                       'Fa': 5,
-#                       'narm1': 0.5,
-#                       'narm2': 1.2,
-#                       'narm3': 1.3,
-#                       'narm4': 1.0,
-#                       'narm5': 0.25,
-#                       'warm1': 1.0,
-#                       'warm2': 1.5,
-#                       'warm3': 1.0,
-#                       'warm4': 0.8,
-#                       'warm5': 1.0,
-#                       'harm1': 1.0,
-#                       'harm2': 0.8,
-#                       'harm3': 1.3,
-#                       'harm4': 1.5,
-#                       'harm5': 1.0,
-#                       'farm1': 1.1,
-#                       'farm2': 0.3,
-#                       'farm3': 0.4,
-#                       'farm4': 1.5,
-#                       'farm5': 0.3}
-
-'''
-PARAMS = {
-    'thick_disk': {'e_density': 0.033/0.97,
-                   'height': 0.97,
-                   'radius': 17.5,
-                   'F': 0.18},
-
-    'thin_disk': {'e_density': 0.08,
-                  'height': 0.15,
-                  'radius': 3.8,
-                  'F': 120},
-
-    'galactic_center': {'e_density': 10.0,
-                        'center': np.array([-0.01, 0.0, -0.020]),
-                        'radius': 0.145,
-                        'height': 0.026,
-                        'F': 0.6e5},
-
-    'ldr': {'ellipsoid': np.array([1.50, .750, .50]),
-            'center': np.array([1.36, 8.06, 0.0]),
-            'theta': -24.2*pi/180,
-            'e_density': 0.012,
-            'F': 0.1},
-
-    'lsb': {'ellipsoid': np.array([1.050, .4250, .3250]),
-            'center': np.array([-0.75, 9.0, -0.05]),
-            'theta': 139.*pi/180,
-            'e_density': 0.016,
-            'F': 0.01},
-
-    'lhb': {'cylinder': np.array([.0850, .1000, .330]),
-            'center': np.array([0.01, 8.45, 0.17]),
-            'theta': 15*pi/180,
-            'e_density': 0.005,
-            'F': 0.01},
-
-    'loop_in': {'center': np.array([-0.045, 8.40, 0.07]),
-                'radius': 0.120,
-                'e_density': 0.0125,
-                'F': 0.2},
-
-    'loop_out': {'center': np.array([-0.045, 8.40, 0.07]),
-                 'radius': 0.120 + 0.060,
-                 'e_density': 0.0125,
-                 'F': 0.01},
-
-    'spiral_arms': {'adict': init_spiral_arms(),
-                    'gal_param': read_galparam(),
-                    'e_density': 1.,
-                    'F': 1.0},
-
-    'dummy': {'center': np.array([0.,0.,0.]),
-              'radius': 0.,
-              'e_density': 1.,
-              'F': 1.0}}
-'''
-
-
-def matmul(a, b):
-    try:
-        return a.__matmul__(b)
-    except AttributeError:
-        return np.matmul(a, b)
-
-
 
 # Units
 DM_unit = u.pc / u.cm**3
@@ -146,6 +30,7 @@ d_unit = u.kpc
 # Sun
 XYZ_SUN = np.array([0, 8.5, 0])
 RSUN = sqrt(rad2d2(XYZ_SUN))
+
 
 def set_xyz_sun(xyz_sun):
     global XYZ_SUN
@@ -185,12 +70,11 @@ def thin_disk(xyz, radius, height):
     """
     rad2 = sqrt(rad2d2(xyz))
     dens = np.zeros_like(rad2)
-    zeros = np.any([np.abs(radius-rad2) > 20., np.abs(xyz[-1]) > 40],axis=0)  # Avoid floating point
-    # Ok
+    # Avoid floating point
+    zeros = np.any([np.abs(radius-rad2) > 20., np.abs(xyz[-1]) > 40], axis=0)
     ok = ~zeros
     dens[ok] = (exp(-(radius - rad2[ok])**2/1.8**2) /
-            cosh(xyz[-1][ok]/height)**2)  # Why 1.8?
-    # Return
+                cosh(xyz[-1][ok]/height)**2)  # Why 1.8?
     return dens
 
 
@@ -230,7 +114,6 @@ class NEobject(object):
         - `func`: Electron density function
         - `**params`: Model parameter
         """
-        self._params = params
         self._fparam = params.pop('F')
         self._ne0 = params.pop('e_density')
         try:
@@ -270,7 +153,7 @@ class NEobject(object):
 
         """
         # Convert to floats
-        l,b,d = parse_lbd(l,b,d)
+        l, b, d = parse_lbd(l, b, d)
         #
         xyz = galactic_to_galactocentric(l, b, d, [0, 0, 0])
 
@@ -308,7 +191,7 @@ class NEobject(object):
         DM = parse_DM(DM)
 
         # Initial guess
-        dist0 = DM/self._params['thick_disk']['e_density']/1000
+        dist0 = DM/self.params['thick_disk']['e_density']/1000
 
         while self.DM(l, b, dist0).value < DM:
             dist0 *= 2
@@ -601,23 +484,28 @@ class ElectronDensity(NEobject):
                  **params):
         """
         """
-        self._params = params
-        self._thick_disk = NEobject(thick_disk, **params['thick_disk'])
-        self._thin_disk = NEobject(thin_disk, **params['thin_disk'])
-        self._spiral_arms = NEobject(ne_spiral_arm, **params['spiral_arms'])
-        self._galactic_center = NEobject(gc, **params['galactic_center'])
-        self._lism = LocalISM(**params)
+        self._params = ne_io.Params(**params)
+        self._thick_disk = NEobject(thick_disk, **self.params['thick_disk'])
+        self._thin_disk = NEobject(thin_disk, **self.params['thin_disk'])
+        self._galactic_center = NEobject(gc, **self.params['galactic_center'])
+        self._lism = LocalISM(**self.params)
+        self._spiral_arms = NEobject(ne_spiral_arm, **self.params['spiral_arms'])
         self._clumps = Clumps(clumps_file=clumps_file)
         self._voids = Voids(voids_file=voids_file)
         self._combined = ((self._voids |
                           (self._lism |
-                           (self._thick_disk + self._spiral_arms +
+                           (self._thick_disk +
                             self._thin_disk +
+                            self._spiral_arms +
                             self._galactic_center))) +
                           self._clumps)
 
     def electron_density(self, xyz):
         return self._combined.ne(xyz)
+
+    @property
+    def params(self):
+        return self._params
 
 
 class Ellipsoid(object):

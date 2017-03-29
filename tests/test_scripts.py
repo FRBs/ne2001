@@ -6,6 +6,7 @@ import pytest
 
 from ne2001.scripts import simple_lb
 
+
 def test_simple_lbd():
     # Simple l,b
     pargs = simple_lb.parser(['1','1'])
@@ -13,4 +14,3 @@ def test_simple_lbd():
     # Add d
     pargs = simple_lb.parser(['1','1','-d 50'])
     simple_lb.main(pargs)
-
