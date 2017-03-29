@@ -12,7 +12,6 @@ from scipy import integrate
 from ne2001 import density
 from ne2001 import ne_io
 from ne2001 import utils
-from ne2001 import io
 from ne2001.cli import main
 
 PARAMS = ne_io.Params()

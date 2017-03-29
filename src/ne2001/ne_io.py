@@ -47,6 +47,7 @@ class Params(dict):
         try:
             params = numpify_dict(parse_json(os.path.join(self.path,
                                                           self.ifile)))
+            params['spiral_arms']['adict'] = init_spiral_arms()
         except IOError:
             params = {}
         params.update(new_params)
@@ -123,14 +124,14 @@ def read_lism(ifile='ne_lism.json'):
 
     """
     # Read
-    with open(DATA_PATH + ifile, 'rt') as fh:
+    with open(os.path.join(DATA_PATH, ifile), 'rt') as fh:
         lism_dict = json.load(fh)
     # Return
     return lism_dict
 
 
-def init_spiral_arms():
-    armsinp = DATA_PATH + 'ne_arms_log_mod.inp'
+def init_spiral_arms(ifile='ne_arms_log_mod.inp'):
+    armsinp = os.path.join(DATA_PATH, ifile)
     # logarms = DATA_PATH + 'log_arms.out'
 
     narms = 5

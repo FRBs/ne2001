@@ -18,10 +18,16 @@ from scipy.integrate import cumtrapz
 from scipy.integrate import quad
 
 from . import ne_io
+from .spiral_arms import ne_spiral_arm
 from .utils import galactic_to_galactocentric
 from .utils import lzproperty
 from .utils import matmul
 from .utils import parse_DM
+from .utils import parse_lbd
+from .utils import rad2d2
+from .utils import rad3d2
+from .utils import rotation
+
 
 # Units
 DM_unit = u.pc / u.cm**3
@@ -114,8 +120,14 @@ class NEobject(object):
         - `func`: Electron density function
         - `**params`: Model parameter
         """
-        self._fparam = params.pop('F')
-        self._ne0 = params.pop('e_density')
+        try:
+            self._fparam = params.pop('F')
+        except KeyError:
+            self._fparam = 1
+        try:
+            self._ne0 = params.pop('e_density')
+        except KeyError:
+            self._ne0 = 1
         try:
             self._func = func(**params)
         except TypeError:
@@ -489,7 +501,8 @@ class ElectronDensity(NEobject):
         self._thin_disk = NEobject(thin_disk, **self.params['thin_disk'])
         self._galactic_center = NEobject(gc, **self.params['galactic_center'])
         self._lism = LocalISM(**self.params)
-        self._spiral_arms = NEobject(ne_spiral_arm, **self.params['spiral_arms'])
+        self._spiral_arms = NEobject(ne_spiral_arm,
+                                     **self.params['spiral_arms'])
         self._clumps = Clumps(clumps_file=clumps_file)
         self._voids = Voids(voids_file=voids_file)
         self._combined = ((self._voids |
