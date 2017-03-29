@@ -146,7 +146,7 @@ def test_electron_density_trapz():
 
 def test_dist():
     seed(123)
-    for i in range(10):
+    for i in range(1):
         tol = 0.1
         ne = density.ElectronDensity()
         l = rand()*360
