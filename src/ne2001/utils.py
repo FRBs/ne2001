@@ -1,21 +1,12 @@
 "Some utility methods"
 from __future__ import division
+
 import numpy as np
+from astropy.coordinates import Angle
+from astropy.units import Quantity
 from numpy import cos
 from numpy import pi
 from numpy import sin
-
-from astropy.coordinates import Angle
-from astropy.units import Quantity
-from astropy.units.core import UnitConversionError
-
-
-def rad3d2(xyz):
-    return xyz[0]**2 + xyz[1]**2 + xyz[-1]**2
-
-
-def rad2d2(xyz):
-    return xyz[0]**2 + xyz[1]**2
 
 
 def parse_DM(in_DM):
@@ -55,7 +46,7 @@ def parse_lbd(in_l, in_b, in_d):
         l = in_l
     elif isinstance(in_l, int):
         l = float(in_l)
-    elif isinstance(in_l, (Angle,Quantity)):
+    elif isinstance(in_l, (Angle, Quantity)):
         l = in_l.value
     else:
         raise IOError("Bad format for input Galactic longitude")
@@ -64,7 +55,7 @@ def parse_lbd(in_l, in_b, in_d):
         b = in_b
     elif isinstance(in_b, int):
         b = float(in_b)
-    elif isinstance(in_b, (Angle,Quantity)):
+    elif isinstance(in_b, (Angle, Quantity)):
         b = in_b.value
     else:
         raise IOError("Bad format for input Galactic latitude")
@@ -78,7 +69,7 @@ def parse_lbd(in_l, in_b, in_d):
     else:
         raise IOError("Bad format for input distance")
     # Return
-    return l,b,d
+    return l, b, d
 
 
 def galactic_to_galactocentric(l, b, distance, xyz_sun):
@@ -133,4 +124,16 @@ def rotation(theta, axis=-1):
                          [0, 0, 1]])
 
 
+def rad3d2(xyz):
+    return xyz[0]**2 + xyz[1]**2 + xyz[-1]**2
 
+
+def rad2d2(xyz):
+    return xyz[0]**2 + xyz[1]**2
+
+
+def matmul(a, b):
+    try:
+        return a.__matmul__(b)
+    except AttributeError:
+        return np.matmul(a, b)

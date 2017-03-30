@@ -6,18 +6,18 @@ import numpy as np
 from scipy import integrate
 
 from ne2001 import density
-from ne2001 import io as ne_io
+from ne2001 import ne_io
+
 
 def test_params():
-    PARAMS = ne_io.read_params()
-    assert isinstance(PARAMS, dict)
+    params = ne_io.Params()
+    assert isinstance(params, dict)
     # Thick disk
-    assert 'thick_disk' in PARAMS.keys()
+    assert 'thick_disk' in params
+    assert 'thin_disk' in params
 
 def test_galparam():
     gal_param = ne_io.read_galparam()
     assert isinstance(gal_param, dict)
-
-    for key in ['A1','A2','harm1','h1']:
-        assert key in gal_param.keys()
-
+    assert 'thick_disk' in gal_param
+    assert 'thin_disk' in gal_param
