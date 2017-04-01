@@ -2,28 +2,44 @@
 from __future__ import division
 
 import numpy as np
-from astropy.coordinates import Angle
-from astropy.units import Quantity
 from numpy import cos
 from numpy import pi
 from numpy import sin
 
 
-def parse_DM(in_DM):
-    """ Convert, as necessary, DM into float
+def parse_units(val, units, name, dtype=float):
     """
-    if isinstance(in_DM, float):
-        DM = in_DM
-    elif isinstance(in_DM, Quantity):
-        DM = in_DM.to('pc/cm**3').value
-    else:
-        raise IOError("Bad format for input DM")
-    # Return
-    return DM
+    Convert, as necessary, `val` to `units` as `dtype`
+    """
+
+    try:
+        return val.to(units).value
+    except AttributeError:
+        pass
+    except Exception as inst:
+        raise IOError("Bad format for input {}. ({})".
+                      format(name, inst))
+    try:
+        parsed_val = np.array(val).astype(dtype)
+        if parsed_val.size == 1:
+            return parsed_val.flatten()[0]
+        return parsed_val
+    except Exception as inst:
+        raise IOError("Bad format for input {}. ({})".
+                      format(name, inst))
 
 
-def parse_lbd(in_l, in_b, in_d):
-    """ Convert, as necessary, l,b,d into floats
+def parse_DM(DM):
+    """
+    Convert, as necessary, DM into float
+    """
+    return parse_units(DM, 'pc/cm**3', 'DM')
+
+
+def parse_lbd(gal_l, gal_b, distance):
+    """
+    Convert, as necessary, l,b,d into floats
+
     Parameters
     ----------
     in_l : float or Angle
@@ -35,40 +51,17 @@ def parse_lbd(in_l, in_b, in_d):
 
     Returns
     -------
-    l : float
-    b : float
-    d : float
+    gal_l : float
+      Galactic longitude in deg
+    gal_b : float
+      Galactic latitude in deg
+    distance : float
       Distance in kpc
 
     """
-    # l
-    if isinstance(in_l, float):
-        l = in_l
-    elif isinstance(in_l, int):
-        l = float(in_l)
-    elif isinstance(in_l, (Angle, Quantity)):
-        l = in_l.value
-    else:
-        raise IOError("Bad format for input Galactic longitude")
-    # b
-    if isinstance(in_b, float):
-        b = in_b
-    elif isinstance(in_b, int):
-        b = float(in_b)
-    elif isinstance(in_b, (Angle, Quantity)):
-        b = in_b.value
-    else:
-        raise IOError("Bad format for input Galactic latitude")
-    # d
-    if isinstance(in_d, float):
-        d = in_d
-    elif isinstance(in_d, int):
-        d = float(in_d)
-    elif isinstance(in_d, (Quantity)):
-        d = in_d.to('kpc').value
-    else:
-        raise IOError("Bad format for input distance")
-    # Return
+    l = parse_units(gal_l, 'deg', 'Galactic longitude')
+    b = parse_units(gal_b, 'deg', 'Galactic latitude')
+    d = parse_units(distance, 'kpc', 'distance')
     return l, b, d
 
 
