@@ -4,9 +4,9 @@ from __future__ import absolute_import
 from __future__ import print_function
 
 import io
+import os
 import re
 from glob import glob
-import os
 from os.path import basename
 from os.path import dirname
 from os.path import join
@@ -22,7 +22,7 @@ def read(*names, **kwargs):
         encoding=kwargs.get('encoding', 'utf8')
     ).read()
 
-#
+
 setup_keywords = dict()
 if os.path.isdir('bin'):
     setup_keywords['scripts'] = [fname for fname in glob(os.path.join('bin', '*'))

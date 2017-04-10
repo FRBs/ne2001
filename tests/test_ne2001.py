@@ -2,20 +2,19 @@
 import os
 
 import numpy as np
+import pytest
 from click.testing import CliRunner
 from numpy.random import rand
 from numpy.random import randint
 from numpy.random import seed
 from scipy import integrate
-import pytest
 
 from ne2001 import density
+from ne2001 import ne_io
 from ne2001 import utils
-from ne2001 import io
 from ne2001.cli import main
 
-#PARAMS = density.PARAMS
-PARAMS = io.read_params()
+PARAMS = ne_io.Params()
 density.set_xyz_sun(np.array([0, 8.5, 0]))
 
 
@@ -131,7 +130,7 @@ def test_DM():
 
 def test_electron_density_quad():
     tol = 1e-3
-    ne = density.ElectronDensity(**PARAMS)
+    ne = density.ElectronDensity()
     l, b, d = -2, 12, 1
     DM = 23.98557
     assert abs(ne.DM(l, b, d).value - DM)/DM < tol
@@ -139,7 +138,7 @@ def test_electron_density_quad():
 
 def test_electron_density_trapz():
     tol = 1e-3
-    ne = density.ElectronDensity(**PARAMS)
+    ne = density.ElectronDensity()
     l, b, d = -2, 12, 1
     DM = 23.98557
     assert abs(ne.DM(l, b, d, integrator=integrate.trapz).value - DM)/DM < tol
@@ -147,9 +146,9 @@ def test_electron_density_trapz():
 
 def test_dist():
     seed(123)
-    for i in range(10):
+    for i in range(1):
         tol = 0.1
-        ne = density.ElectronDensity(**PARAMS)
+        ne = density.ElectronDensity()
         l = rand()*360
         b = np.arccos(1 - 2*rand())/np.pi*180
         d = rand()*5
