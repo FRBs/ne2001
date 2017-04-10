@@ -82,6 +82,24 @@ def parse_lbd(in_l, in_b, in_d):
 
 
 def galactic_to_galactocentric(l, b, distance, xyz_sun):
+    """ Convert galactic coordiantes to galactocentric
+    Parameters
+    ----------
+    l : float
+      latitude
+    b : float
+      longitude
+    distance : float
+      kpc
+    xyz_sun : ndarray
+      positions of the Sun in kpc
+
+    Returns
+    -------
+    xyz_c : ndarray
+      x,y,z positions along the sightline
+
+    """
     slc = sin(l/180*pi)
     clc = cos(l/180*pi)
     sbc = sin(b/180*pi)
