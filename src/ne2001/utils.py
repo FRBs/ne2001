@@ -70,9 +70,9 @@ def galactic_to_galactocentric(l, b, distance, xyz_sun):
     Parameters
     ----------
     l : float
-      latitude
-    b : float
       longitude
+    b : float
+      latitude
     distance : float
       kpc
     xyz_sun : ndarray
