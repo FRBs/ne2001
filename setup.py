@@ -30,7 +30,7 @@ if os.path.isdir('bin'):
 
 setup(
     name='ne2001',
-    version='0.0.1',
+    version='0.0.2',
     license='BSD',
     description="Python implementation of Cordes-Lazio's NE2001 Galactic Free Electron Density Model",
     long_description='%s\n%s' % (

@@ -1,23 +1,21 @@
-"""
-Module that contains the command line app.
-
-Why does this file exist, and why not put this in __main__?
-
-  You might be tempted to import things from __main__ later, but that will cause
-  problems: the code will get executed twice:
-
-  - When you run `python -mne2001` python will execute
-    ``__main__.py`` as a script. That means there won't be any
-    ``ne2001.__main__`` in ``sys.modules``.
-  - When you import __main__ it will get executed again (as a module) because
-    there's no ``ne2001.__main__`` in ``sys.modules``.
-
-  Also see (1) from http://click.pocoo.org/5/setuptools/#setuptools-integration
-"""
 import click
+from astropy import coordinates
+from ne2001 import density, ne_io
 
+@click.group('ne2001')
+def main():
+    pass
 
-@click.command()
-@click.argument('names', nargs=-1)
-def main(names):
-    click.echo(repr(names))
+@main.command()
+@click.argument('ra', type=float)
+@click.argument('dec', type=float)
+@click.option('--distance', type=float, default=10)
+def mwdm(ra, dec, distance):
+    co = coordinates.SkyCoord(ra, dec, unit='deg')
+    # or pass sexagesimal
+    #    co = coordinates.SkyCoord(rastr, decstr, unit=(units.hourangle, units.deg))
+
+    ne = density.ElectronDensity(**ne_io.Params())
+    dm = ne.DM(co.galactic.l, co.galactic.b, distance)
+    
+    print(f'For (RA, Dec) = ({ra}, {dec}), (l, b) = ({co.galactic.l}, {co.galactic.b}), DM={dm} pc/cm3')
