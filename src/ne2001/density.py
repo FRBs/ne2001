@@ -14,7 +14,7 @@ from numpy import exp
 from numpy import pi
 from numpy import sqrt
 from numpy import tan
-from scipy.integrate import cumtrapz
+from scipy.integrate import cumulative_trapezoid
 from scipy.integrate import quad
 
 from . import ne_io
@@ -209,9 +209,9 @@ class NEobject(object):
             dist0 *= 2
 
         nsamp = max(1000, dist0/step_size)
-        d_samp = np.linspace(0, dist0, nsamp + 1)
+        d_samp = np.linspace(0, dist0, int(nsamp) + 1)
         ne_samp = self.ne(galactic_to_galactocentric(l, b, d_samp, XYZ_SUN))
-        dm_samp = cumtrapz(ne_samp, dx=d_samp[1])*1000
+        dm_samp = cumulative_trapezoid(ne_samp, dx=d_samp[1])*1000
         return np.interp(DM, dm_samp, d_samp[1:]) * d_unit
 
     def ne(self, xyz):
