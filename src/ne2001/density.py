@@ -28,6 +28,7 @@ from .utils import rad2d2
 from .utils import rad3d2
 from .utils import rotation
 
+from IPython import embed
 
 # Units
 DM_unit = u.pc / u.cm**3
@@ -170,6 +171,7 @@ class NEobject(object):
         xyz = galactic_to_galactocentric(l, b, d, [0, 0, 0])
 
         dfinal = sqrt(rad3d2(xyz))
+
         if integrator.__name__ is 'quad':
             return integrator(lambda x: self.ne(XYZ_SUN + x*xyz),
                               0, 1, *arg, epsrel=epsrel, epsabs=epsabs,
@@ -216,7 +218,8 @@ class NEobject(object):
 
     def ne(self, xyz):
         "Electron density at the location `xyz`"
-        return self.electron_density(xyz)
+        tmp = self.electron_density(xyz)
+        return tmp.item() if hasattr(tmp, 'item') else tmp
 
     def electron_density(self, xyz):
         "Electron density at the location `xyz`"
